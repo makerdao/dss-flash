@@ -2,13 +2,13 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 
-import "./DssFlash.sol";
+import "./flash.sol";
 
 contract DssFlashTest is DSTest {
-    DssFlash flash;
+    //DssFlash flash;
 
     function setUp() public {
-        flash = new DssFlash();
+        //flash = new DssFlash();
     }
 
     function testFail_basic_sanity() public {
