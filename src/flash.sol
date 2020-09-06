@@ -1,5 +1,7 @@
 pragma solidity ^0.6.7;
 
+import "./interface/IFlashMintReceiver.sol";
+
 interface VatLike {
     function suck(address,address,uint256) external;
 }
@@ -37,8 +39,15 @@ contract DssFlash {
     }
 
     // --- Mint ---
-    function mint(uint256 rad) external {
-        vat.suck(address(vow), address(msg.sender), rad);
+    function mint(address _receiver, uint256 _amount, bytes calldata _params) external {
+        require(_amount > 0, "_amount must be greater than 0");
+
+        IFlashMintReceiver receiver = IFlashMintReceiver(_receiver);
+
+        vat.suck(address(vow), address(msg.sender), _amount);
+        uint256 amountFee = 0;
+
+        receiver.execute(_amount, amountFee, _params);
     }
 
 }
