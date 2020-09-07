@@ -1,7 +1,6 @@
 pragma solidity ^0.6.7;
 
 import "./interface/IFlashMintReceiver.sol";
-import "openzeppelin-solidity/contracts/utils/ReentrancyGuard.sol";
 
 interface VatLike {
     function dai (address) external view returns (uint);
@@ -55,7 +54,7 @@ contract DssFlash is ReentrancyGuard {
     }
 
     // --- Mint ---
-    function mint(address _receiver, uint256 _amount, bytes calldata _params) external nonReentrant {
+    function mint(address _receiver, uint256 _amount, bytes calldata _params) external {
         require(_amount > 0, "DssFlash/amount-zero");
         require(_amount <= line, "DssFlash/ceiling-exceeded");
 
