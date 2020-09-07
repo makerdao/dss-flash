@@ -4,6 +4,3 @@
 [submodule "lib/dss"]
 	path = lib/dss
 	url = https://github.com/makerdao/dss
-[submodule "lib/openzeppelin-contracts"]
-	path = lib/openzeppelin-contracts
-	url = https://github.com/dapphub/openzeppelin-contracts
