@@ -9,11 +9,11 @@ interface VatLike {
     function suck(address,address,uint256) external;
 }
 
-contract DssFlash is ReentrancyGuard {
+contract DssFlash {
 
     // --- Auth ---
     mapping (address => uint) public wards;
-    function rely(address guy) external auth { wards[guy] = 1;  }
+    function rely(address guy) external auth { wards[guy] = 1; }
     function deny(address guy) external auth { wards[guy] = 0; }
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
@@ -21,10 +21,18 @@ contract DssFlash is ReentrancyGuard {
     }
 
     // --- Data ---
-    VatLike public vat;   // CDP Engine
-    address public vow;   // Debt Engine
-    uint256 public line;  // Debt Ceiling  [rad]
-    uint256 public toll;  // Fee           [wad]
+    VatLike public  vat;    // CDP Engine
+    address public  vow;    // Debt Engine
+    uint256 public  line;   // Debt Ceiling  [rad]
+    uint256 public  toll;   // Fee           [wad]
+    uint256 private locked; // reentrancy guard
+
+    modifier lock {
+        require(locked == 0, "DssFlash/reentrancy-guard");
+        locked = 1;
+        _;
+        locked = 0;
+    }
 
     // --- Init ---
     constructor(address vat_) public {
@@ -32,14 +40,14 @@ contract DssFlash is ReentrancyGuard {
     }
 
     // --- Math ---
-    uint256 constant ONE = 10 ** 18;
+    uint256 constant WAD = 10 ** 18;
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x);
     }
     function rmul(uint x, uint y) internal pure returns (uint z) {
         z = x * y;
         require(y == 0 || z / y == x);
-        z = z / ONE;
+        z = z / WAD;
     }
 
     // --- Administration ---
@@ -54,16 +62,21 @@ contract DssFlash is ReentrancyGuard {
     }
 
     // --- Mint ---
-    function mint(address _receiver, uint256 _amount, bytes calldata _params) external {
+    function mint(
+        address _receiver,      // address of conformant IFlashMintReceiver
+        uint256 _amount,        // amount to flash mint [rad]
+        bytes calldata _data    // calldata
+    ) external lock {
         require(_amount > 0, "DssFlash/amount-zero");
         require(_amount <= line, "DssFlash/ceiling-exceeded");
+        require(_data.length > 0, "DssFlash/empty-calldata");
 
         IFlashMintReceiver receiver = IFlashMintReceiver(_receiver);
 
         vat.suck(address(this), address(_receiver), _amount);
         uint256 fee = rmul(_amount, toll);
 
-        receiver.execute(_amount, fee, _params);
+        receiver.execute(_amount, fee, _data);
 
         require(vat.dai(address(this)) >= add(_amount, fee), "DssFlash/insufficient-payback");
 
