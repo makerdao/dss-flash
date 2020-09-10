@@ -36,6 +36,7 @@ contract DssFlash {
 
     // --- Init ---
     constructor(address vat_) public {
+        wards[msg.sender] = 1;
         vat = VatLike(vat_);
     }
 
@@ -43,6 +44,9 @@ contract DssFlash {
     uint256 constant WAD = 10 ** 18;
     function add(uint x, uint y) internal pure returns (uint z) {
         require((z = x + y) >= x);
+    }
+    function sub(uint x, uint y) internal pure returns (uint z) {
+        require((z = x - y) <= x);
     }
     function rmul(uint x, uint y) internal pure returns (uint z) {
         z = x * y;
@@ -73,15 +77,17 @@ contract DssFlash {
 
         IFlashMintReceiver receiver = IFlashMintReceiver(_receiver);
 
-        vat.suck(address(this), address(_receiver), _amount);
+        vat.suck(address(this), _receiver, _amount);
         uint256 fee = rmul(_amount, toll);
 
         receiver.execute(_amount, fee, _data);
 
-        require(vat.dai(address(this)) >= add(_amount, fee), "DssFlash/insufficient-payback");
+        uint256 dai = vat.dai(address(this));
+
+        require(dai >= add(_amount, fee), "DssFlash/insufficient-payback");
 
         vat.heal(_amount);
-        vat.move(address(this), vow, fee);
+        vat.move(address(this), vow, sub(dai, _amount));
     }
 
 }

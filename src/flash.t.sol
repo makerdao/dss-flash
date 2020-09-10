@@ -9,6 +9,7 @@ import {Vow}     from "dss/vow.sol";
 import {GemJoin} from "dss/join.sol";
 
 import "./flash.sol";
+import "./interface/IFlashMintReceiver.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -36,6 +37,24 @@ contract TestVow is Vow {
     function Woe() public view returns (uint) {
         return sub(sub(Awe(), Sin), Ash);
     }
+}
+
+contract TestImmediatePaybackReceiver is IFlashMintReceiver {
+
+    Vat vat;
+    DssFlash flash;
+
+    // --- Init ---
+    constructor(address vat_, address flash_) public {
+        vat = Vat(vat_);
+        flash = DssFlash(flash_);
+    }
+
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+        // Just pay back the original amount
+        vat.move(address(this), address(flash), _amount);
+    }
+
 }
 
 contract DssFlashTest is DSTest {
@@ -69,8 +88,6 @@ contract DssFlashTest is DSTest {
     function setUp() public {
         hevm = Hevm(address(CHEAT_CODE));
 
-        flash = new DssFlash(address(vat));
-
         me = address(this);
 
         vat = new TestVat();
@@ -78,6 +95,8 @@ contract DssFlashTest is DSTest {
 
         spot = new Spotter(address(vat));
         vat.rely(address(spot));
+
+        flash = new DssFlash(address(vat));
 
         vow = new TestVow(address(vat), address(0), address(0));
 
@@ -108,6 +127,15 @@ contract DssFlashTest is DSTest {
         vat.frob(ilk, me, me, me, 40 ether, 100 ether);
         assertEq(vat.gem(ilk, me), 960 ether);
         assertEq(vat.dai(me), rad(100 ether));
+    }
+    function test_mint_no_fee_payback () public {
+        // Admin setup
+        flash.file("vow", address(vow));
+        flash.file("line", 1000 ether);
+        vat.rely(address(flash));
+
+        TestImmediatePaybackReceiver r = new TestImmediatePaybackReceiver(address(vat), address(flash));
+        flash.mint(address(r), 10 ether, msg.data);
     }
 
     // TODO: Make a few reference implementations of IFlashMintReceiver
