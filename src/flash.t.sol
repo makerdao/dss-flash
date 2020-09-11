@@ -74,7 +74,7 @@ contract TestMintAndPaybackReceiver is IFlashMintReceiver {
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        // Mint 
+        // Mint
         vat.mint(address(this), mintRad);
         vat.move(address(this), address(flash), _amount + _fee);
     }
@@ -98,7 +98,7 @@ contract TestMintAndPaybackAllReceiver is IFlashMintReceiver {
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        // Mint 
+        // Mint
         vat.mint(address(this), mintRad);
         vat.move(address(this), address(flash), _amount + mintRad);
     }
@@ -237,6 +237,20 @@ contract DssFlashTest is DSTest {
         assertEq(vat.dai(address(mintAndPaybackReceiver)), 9 ether);
     }
 
+    // Test mint doesn't fail when contract already has a Dai balance
+    function test_preexisting_dai_in_flash () public {
+        flash.file("toll", RATE_ONE_PCT);
+
+        vat.move(address(this), address(mintAndPaybackReceiver), rad(1 ether));
+
+        mintAndPaybackReceiver.setMint(10 ether);
+
+        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
+
+        assertEq(vow.Joy(), 1 ether);
+        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(1 ether) + 9 ether);
+    }
+
     // test execute that return vat.dai() < add(_amount, fee) fails
     function testFail_mint_insufficient_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
@@ -253,10 +267,12 @@ contract DssFlashTest is DSTest {
         flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
     }
 
+
+
     // TODO:
     //       - Simple flash mint that uses a DEX
     //           - should test
     //       - Flash mint that moves DAI around in core without DaiJoin.exit()
     //           - should test
-    
+
 }

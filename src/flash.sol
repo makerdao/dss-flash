@@ -79,10 +79,11 @@ contract DssFlash {
 
         vat.suck(address(this), _receiver, _amount);
         uint256 fee = rmul(_amount, toll);
+        uint256 bal = vat.dai(address(this));
 
         receiver.execute(_amount, fee, _data);
 
-        require(vat.dai(address(this)) == add(_amount, fee), "DssFlash/invalid-payback");
+        require(vat.dai(address(this)) == add(bal, add(_amount, fee)), "DssFlash/invalid-payback");
 
         vat.heal(_amount);
         vat.move(address(this), vow, fee);
