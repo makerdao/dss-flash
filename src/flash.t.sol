@@ -57,6 +57,54 @@ contract TestImmediatePaybackReceiver is IFlashMintReceiver {
 
 }
 
+contract TestMintAndPaybackReceiver is IFlashMintReceiver {
+
+    TestVat vat;
+    DssFlash flash;
+    uint256 mintRad;
+
+    // --- Init ---
+    constructor(address vat_, address flash_) public {
+        vat = TestVat(vat_);
+        flash = DssFlash(flash_);
+    }
+
+    function setMint(uint256 mintRad_) public {
+        mintRad = mintRad_;
+    }
+
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+        // Mint 
+        vat.mint(address(this), mintRad);
+        vat.move(address(this), address(flash), _amount + _fee);
+    }
+
+}
+
+contract TestMintAndPaybackAllReceiver is IFlashMintReceiver {
+
+    TestVat vat;
+    DssFlash flash;
+    uint256 mintRad;
+
+    // --- Init ---
+    constructor(address vat_, address flash_) public {
+        vat = TestVat(vat_);
+        flash = DssFlash(flash_);
+    }
+
+    function setMint(uint256 mintRad_) public {
+        mintRad = mintRad_;
+    }
+
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+        // Mint 
+        vat.mint(address(this), mintRad);
+        vat.move(address(this), address(flash), _amount + mintRad);
+    }
+
+}
+
 contract DssFlashTest is DSTest {
     Hevm hevm;
 
@@ -71,11 +119,17 @@ contract DssFlashTest is DSTest {
 
     DssFlash flash;
 
+    TestImmediatePaybackReceiver immediatePaybackReceiver;
+    TestMintAndPaybackReceiver mintAndPaybackReceiver;
+    TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
+
     // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
     bytes20 constant CHEAT_CODE =
         bytes20(uint160(uint256(keccak256('hevm cheat code'))));
 
     bytes32 constant ilk = "gold";
+
+    uint256 constant RATE_ONE_PCT = 10 ** 16;
 
     function ray(uint wad) internal pure returns (uint) {
         return wad * 10 ** 9;
@@ -127,46 +181,82 @@ contract DssFlashTest is DSTest {
         vat.frob(ilk, me, me, me, 40 ether, 100 ether);
         assertEq(vat.gem(ilk, me), 960 ether);
         assertEq(vat.dai(me), rad(100 ether));
-    }
-    function test_mint_no_fee_payback () public {
-        // Admin setup
+
+        // Basic auth and 1000 ether debt ceiling
         flash.file("vow", address(vow));
         flash.file("line", 1000 ether);
         vat.rely(address(flash));
 
-        TestImmediatePaybackReceiver r = new TestImmediatePaybackReceiver(address(vat), address(flash));
-        flash.mint(address(r), 10 ether, msg.data);
+        immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(vat), address(flash));
+        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(vat), address(flash));
+        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(vat), address(flash));
     }
 
-    // TODO: Make a few reference implementations of IFlashMintReceiver
-    //       - Mock IFlashMintReceiver adapter
+    function test_mint_no_fee_payback () public {
+        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
+    }
+
+    // test mint() for_amount <= 0
+    function testFail_mint_zero_amount () public {
+        flash.mint(address(immediatePaybackReceiver), 0, msg.data);
+    }
+
+    // test mint() for _amount > line
+    function testFail_mint_amount_over_line () public {
+        flash.mint(address(immediatePaybackReceiver), 1001 ether, msg.data);
+    }
+
+    // test line == 0 means flash minting is halted
+    function testFail_mint_line_zero () public {
+        flash.file("line", 0);
+
+        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
+    }
+
+    // test mint() for _data == 0
+    function testFail_mint_empty_data () public {
+        flash.mint(address(immediatePaybackReceiver), 10 ether, "");
+    }
+
+    // test unauthorized suck() reverts
+    function testFail_mint_unauthorized_suck () public {
+        vat.deny(address(flash));
+
+        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
+    }
+
+    // test happy path execute() returns vat.dai() == add(_amount, fee)
+    //       Make sure we test core system accounting balances before and after.
+    function test_mint_with_fee () public {
+        flash.file("toll", RATE_ONE_PCT);
+        mintAndPaybackReceiver.setMint(10 ether);
+
+        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
+
+        assertEq(vow.Joy(), 1 ether);
+        assertEq(vat.dai(address(mintAndPaybackReceiver)), 9 ether);
+    }
+
+    // test execute that return vat.dai() < add(_amount, fee) fails
+    function testFail_mint_insufficient_dai () public {
+        flash.file("toll", 5 * RATE_ONE_PCT);
+        mintAndPaybackAllReceiver.setMint(4 ether);
+
+        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
+    }
+
+    // test execute that return vat.dai() > add(_amount, fee) fails
+    function testFail_mint_too_much_dai () public {
+        flash.file("toll", 5 * RATE_ONE_PCT);
+        mintAndPaybackAllReceiver.setMint(8 ether);
+
+        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
+    }
+
+    // TODO:
     //       - Simple flash mint that uses a DEX
     //           - should test
     //       - Flash mint that moves DAI around in core without DaiJoin.exit()
     //           - should test
-
-    // TODO: test mint() for_amount <= 0
-
-    // TODO: test mint() for _amount > line
-
-    // TODO: test line == 0 means flash minting is halted
-
-    // TODO: test mint() for _data == 0
-
-    // TODO: test unauthorized suck() reverts
-
-    // TODO: test happy path execute() returns vat.dai() == add(_amount, fee)
-    //       Make sure we test core system accounting balances before and after.
-
-    // TODO: test execute that return vat.dai() < add(_amount, fee) fails
-
-    // TODO: test execute that return vat.dai() > add(_amount, fee) fails
-
-    function testFail_basic_sanity() public {
-        assertTrue(false);
-    }
-
-    function test_basic_sanity() public {
-        assertTrue(true);
-    }
+    
 }
