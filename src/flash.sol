@@ -82,12 +82,10 @@ contract DssFlash {
 
         receiver.execute(_amount, fee, _data);
 
-        uint256 dai = vat.dai(address(this));
-
-        require(dai >= add(_amount, fee), "DssFlash/insufficient-payback");
+        require(vat.dai(address(this)) == add(_amount, fee), "DssFlash/invalid-payback");
 
         vat.heal(_amount);
-        vat.move(address(this), vow, sub(dai, _amount));
+        vat.move(address(this), vow, fee);
     }
 
 }
