@@ -184,7 +184,7 @@ contract DssFlashTest is DSTest {
 
         // Basic auth and 1000 ether debt ceiling
         flash.file("vow", address(vow));
-        flash.file("line", 1000 ether);
+        flash.file("line", rad(1000 ether));
         vat.rely(address(flash));
 
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(vat), address(flash));
@@ -193,7 +193,7 @@ contract DssFlashTest is DSTest {
     }
 
     function test_mint_no_fee_payback () public {
-        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
+        flash.mint(address(immediatePaybackReceiver), rad(10 ether), msg.data);
     }
 
     // test mint() for_amount <= 0
@@ -203,54 +203,54 @@ contract DssFlashTest is DSTest {
 
     // test mint() for _amount > line
     function testFail_mint_amount_over_line () public {
-        flash.mint(address(immediatePaybackReceiver), 1001 ether, msg.data);
+        flash.mint(address(immediatePaybackReceiver), rad(1001 ether), msg.data);
     }
 
     // test line == 0 means flash minting is halted
     function testFail_mint_line_zero () public {
         flash.file("line", 0);
 
-        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
+        flash.mint(address(immediatePaybackReceiver), rad(10 ether), msg.data);
     }
 
     // test mint() for _data == 0
     function testFail_mint_empty_data () public {
-        flash.mint(address(immediatePaybackReceiver), 10 ether, "");
+        flash.mint(address(immediatePaybackReceiver), rad(10 ether), "");
     }
 
     // test unauthorized suck() reverts
     function testFail_mint_unauthorized_suck () public {
         vat.deny(address(flash));
 
-        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
+        flash.mint(address(immediatePaybackReceiver), rad(10 ether), msg.data);
     }
 
     // test happy path execute() returns vat.dai() == add(_amount, fee)
     //       Make sure we test core system accounting balances before and after.
     function test_mint_with_fee () public {
         flash.file("toll", RATE_ONE_PCT);
-        mintAndPaybackReceiver.setMint(10 ether);
+        mintAndPaybackReceiver.setMint(rad(10 ether));
 
-        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
+        flash.mint(address(mintAndPaybackReceiver), rad(100 ether), msg.data);
 
-        assertEq(vow.Joy(), 1 ether);
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), 9 ether);
+        assertEq(vow.Joy(), rad(1 ether));
+        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
     }
 
     // test execute that return vat.dai() < add(_amount, fee) fails
     function testFail_mint_insufficient_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(4 ether);
+        mintAndPaybackAllReceiver.setMint(rad(4 ether));
 
-        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
+        flash.mint(address(mintAndPaybackAllReceiver), rad(100 ether), msg.data);
     }
 
     // test execute that return vat.dai() > add(_amount, fee) fails
     function testFail_mint_too_much_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(8 ether);
+        mintAndPaybackAllReceiver.setMint(rad(8 ether));
 
-        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
+        flash.mint(address(mintAndPaybackAllReceiver), rad(100 ether), msg.data);
     }
 
     // TODO:
