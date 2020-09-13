@@ -74,7 +74,6 @@ contract TestMintAndPaybackReceiver is IFlashMintReceiver {
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        // Mint 
         vat.mint(address(this), mintRad);
         vat.move(address(this), address(flash), _amount + _fee);
     }
@@ -98,9 +97,28 @@ contract TestMintAndPaybackAllReceiver is IFlashMintReceiver {
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        // Mint 
         vat.mint(address(this), mintRad);
         vat.move(address(this), address(flash), _amount + mintRad);
+    }
+
+}
+
+contract TestReentrancyReceiver is IFlashMintReceiver {
+
+    TestVat vat;
+    DssFlash flash;
+    TestImmediatePaybackReceiver immediatePaybackReceiver;
+
+    // --- Init ---
+    constructor(address vat_, address flash_) public {
+        vat = TestVat(vat_);
+        flash = DssFlash(flash_);
+        immediatePaybackReceiver = new TestImmediatePaybackReceiver(vat_, flash_);
+    }
+
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+        flash.mint(address(immediatePaybackReceiver), _amount + _fee, _params);
+        vat.move(address(this), address(flash), _amount + _fee);
     }
 
 }
@@ -122,6 +140,7 @@ contract DssFlashTest is DSTest {
     TestImmediatePaybackReceiver immediatePaybackReceiver;
     TestMintAndPaybackReceiver mintAndPaybackReceiver;
     TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
+    TestReentrancyReceiver reentrancyReceiver;
 
     // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
     bytes20 constant CHEAT_CODE =
@@ -190,6 +209,7 @@ contract DssFlashTest is DSTest {
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(vat), address(flash));
         mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(vat), address(flash));
         mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(vat), address(flash));
+        reentrancyReceiver = new TestReentrancyReceiver(address(vat), address(flash));
     }
 
     function test_mint_no_fee_payback () public {
@@ -251,6 +271,11 @@ contract DssFlashTest is DSTest {
         mintAndPaybackAllReceiver.setMint(rad(8 ether));
 
         flash.mint(address(mintAndPaybackAllReceiver), rad(100 ether), msg.data);
+    }
+
+    // test reentrancy disallowed
+    function testFail_mint_reentrancy () public {
+        flash.mint(address(reentrancyReceiver), rad(100 ether), msg.data);
     }
 
     // TODO:
