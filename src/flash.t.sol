@@ -241,14 +241,17 @@ contract DssFlashTest is DSTest {
     function test_preexisting_dai_in_flash () public {
         flash.file("toll", RATE_ONE_PCT);
 
-        vat.move(address(this), address(mintAndPaybackReceiver), rad(1 ether));
+        // Move some collateral to the flash so it preexists the loan
+        vat.move(address(this), address(flash), rad(1 ether));
 
         mintAndPaybackReceiver.setMint(10 ether);
 
         flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
 
         assertEq(vow.Joy(), 1 ether);
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(1 ether) + 9 ether);
+        assertEq(vat.dai(address(mintAndPaybackReceiver)), 9 ether);
+        // Ensure preexistin amount remains in flash
+        assertEq(vat.dai(address(flash)), rad(1 ether));
     }
 
     // test execute that return vat.dai() < add(_amount, fee) fails
