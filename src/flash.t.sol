@@ -264,12 +264,12 @@ contract DssFlashTest is DSTest {
         // Move some collateral to the flash so it preexists the loan
         vat.move(address(this), address(flash), rad(1 ether));
 
-        mintAndPaybackReceiver.setMint(10 ether);
+        mintAndPaybackReceiver.setMint(rad(10 ether));
 
-        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
+        flash.mint(address(mintAndPaybackReceiver), rad(100 ether), msg.data);
 
-        assertEq(vow.Joy(), 1 ether);
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), 9 ether);
+        assertEq(vow.Joy(), rad(1 ether));
+        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
         // Ensure preexistin amount remains in flash
         assertEq(vat.dai(address(flash)), rad(1 ether));
     }
