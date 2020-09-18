@@ -3,10 +3,11 @@ pragma solidity ^0.6.7;
 import "ds-test/test.sol";
 import "ds-value/value.sol";
 import "ds-token/token.sol";
-import {Vat}     from "dss/vat.sol";
-import {Spotter} from "dss/spot.sol";
-import {Vow}     from "dss/vow.sol";
-import {GemJoin} from "dss/join.sol";
+import {Vat}              from "dss/vat.sol";
+import {Spotter}          from "dss/spot.sol";
+import {Vow}              from "dss/vow.sol";
+import {GemJoin, DaiJoin} from "dss/join.sol";
+import {Dai}              from "dss/dai.sol";
 
 import "./flash.sol";
 import "./interface/IFlashMintReceiver.sol";
@@ -123,6 +124,52 @@ contract TestReentrancyReceiver is IFlashMintReceiver {
 
 }
 
+contract TestDEXTradeReceiver is IFlashMintReceiver {
+
+    TestVat vat;
+    DssFlash flash;
+    Dai dai;
+    DaiJoin daiJoin;
+    DSToken gold;
+    GemJoin gemA;
+    bytes32 ilk;
+
+    uint256 constant ONE = 10 ** 27;
+
+    // --- Init ---
+    constructor(address vat_, address flash_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) public {
+        vat = TestVat(vat_);
+        flash = DssFlash(flash_);
+        dai = Dai(dai_);
+        daiJoin = DaiJoin(daiJoin_);
+        gold = DSToken(gold_);
+        gemA = GemJoin(gemA_);
+        ilk = ilk_;
+    }
+
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+        address me = address(this);
+        uint256 amountWad = _amount / ONE;
+        uint256 feeWad = _fee / ONE;
+        uint256 totalDebtWad = (_amount + _fee) / ONE;
+        uint256 goldAmount = totalDebtWad * 3;
+
+        vat.hope(address(daiJoin));
+        daiJoin.exit(me, amountWad);
+
+        // Perform a "trade"
+        dai.burn(me, amountWad);
+        gold.mint(me, goldAmount);
+
+        // Mint some more dai to repay the original loan
+        gold.approve(address(gemA));
+        gemA.join(me, goldAmount);
+        vat.frob(ilk, me, me, me, int256(goldAmount), int256(totalDebtWad));
+        vat.move(me, address(flash), _amount + _fee);
+    }
+
+}
+
 contract DssFlashTest is DSTest {
     Hevm hevm;
 
@@ -134,6 +181,8 @@ contract DssFlashTest is DSTest {
     DSValue pip;
     GemJoin gemA;
     DSToken gold;
+    DaiJoin daiJoin;
+    Dai dai;
 
     DssFlash flash;
 
@@ -141,6 +190,7 @@ contract DssFlashTest is DSTest {
     TestMintAndPaybackReceiver mintAndPaybackReceiver;
     TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
     TestReentrancyReceiver reentrancyReceiver;
+    TestDEXTradeReceiver dexTradeReceiver;
 
     // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
     bytes20 constant CHEAT_CODE =
@@ -183,6 +233,11 @@ contract DssFlashTest is DSTest {
         gold.approve(address(gemA));
         gemA.join(me, 1000 ether);
 
+        dai = new Dai(0);
+        daiJoin = new DaiJoin(address(vat), address(dai));
+        vat.rely(address(daiJoin));
+        dai.rely(address(daiJoin));
+
         pip = new DSValue();
         pip.poke(bytes32(uint256(5 ether))); // Spot = $2.5
 
@@ -210,6 +265,8 @@ contract DssFlashTest is DSTest {
         mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(vat), address(flash));
         mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(vat), address(flash));
         reentrancyReceiver = new TestReentrancyReceiver(address(vat), address(flash));
+        dexTradeReceiver = new TestDEXTradeReceiver(address(vat), address(flash), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
+        dai.rely(address(dexTradeReceiver));
     }
 
     function test_mint_no_fee_payback () public {
@@ -295,11 +352,17 @@ contract DssFlashTest is DSTest {
         flash.mint(address(reentrancyReceiver), rad(100 ether), msg.data);
     }
 
+    // test trading flash minted dai for gold and minting more dai
+    function test_dex_trade () public {
+        // Set the owner temporarily to allow the receiver to mint
+        gold.setOwner(address(dexTradeReceiver));
+
+        flash.mint(address(dexTradeReceiver), rad(100 ether), msg.data);
+    }
+
 
 
     // TODO:
-    //       - Simple flash mint that uses a DEX
-    //           - should test
     //       - Flash mint that moves DAI around in core without DaiJoin.exit()
     //           - should test
 
