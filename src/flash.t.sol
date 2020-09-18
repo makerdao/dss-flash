@@ -257,6 +257,23 @@ contract DssFlashTest is DSTest {
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
     }
 
+    // Test mint doesn't fail when contract already has a Dai balance
+    function test_preexisting_dai_in_flash () public {
+        flash.file("toll", RATE_ONE_PCT);
+
+        // Move some collateral to the flash so it preexists the loan
+        vat.move(address(this), address(flash), rad(1 ether));
+
+        mintAndPaybackReceiver.setMint(10 ether);
+
+        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
+
+        assertEq(vow.Joy(), 1 ether);
+        assertEq(vat.dai(address(mintAndPaybackReceiver)), 9 ether);
+        // Ensure preexistin amount remains in flash
+        assertEq(vat.dai(address(flash)), rad(1 ether));
+    }
+
     // test execute that return vat.dai() < add(_amount, fee) fails
     function testFail_mint_insufficient_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
@@ -278,10 +295,12 @@ contract DssFlashTest is DSTest {
         flash.mint(address(reentrancyReceiver), rad(100 ether), msg.data);
     }
 
+
+
     // TODO:
     //       - Simple flash mint that uses a DEX
     //           - should test
     //       - Flash mint that moves DAI around in core without DaiJoin.exit()
     //           - should test
-    
+
 }
