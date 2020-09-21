@@ -11,6 +11,7 @@ import {Dai}              from "dss/dai.sol";
 
 import "./flash.sol";
 import "./interface/IFlashMintReceiver.sol";
+import "./base/FlashMintReceiverBase.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -40,106 +41,88 @@ contract TestVow is Vow {
     }
 }
 
-contract TestImmediatePaybackReceiver is IFlashMintReceiver {
-
-    Vat vat;
-    DssFlash flash;
+contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
 
     // --- Init ---
-    constructor(address vat_, address flash_) public {
-        vat = Vat(vat_);
-        flash = DssFlash(flash_);
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
         // Just pay back the original amount
-        vat.move(address(this), address(flash), _amount);
+        completeTransaction(_amount, _fee);
     }
 
 }
 
-contract TestMintAndPaybackReceiver is IFlashMintReceiver {
+contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
 
-    TestVat vat;
-    DssFlash flash;
-    uint256 mintRad;
+    uint256 mint;
 
     // --- Init ---
-    constructor(address vat_, address flash_) public {
-        vat = TestVat(vat_);
-        flash = DssFlash(flash_);
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function setMint(uint256 mintRad_) public {
-        mintRad = mintRad_;
+    function setMint(uint256 _mint) public {
+        mint = _mint;
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        vat.mint(address(this), mintRad);
-        vat.move(address(this), address(flash), _amount + _fee);
+        TestVat _vat = TestVat(address(vat));
+        _vat.mint(address(this), rad(mint));
+
+        completeTransaction(_amount, _fee);
     }
 
 }
 
-contract TestMintAndPaybackAllReceiver is IFlashMintReceiver {
+contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
 
-    TestVat vat;
-    DssFlash flash;
-    uint256 mintRad;
+    uint256 mint;
 
     // --- Init ---
-    constructor(address vat_, address flash_) public {
-        vat = TestVat(vat_);
-        flash = DssFlash(flash_);
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function setMint(uint256 mintRad_) public {
-        mintRad = mintRad_;
+    function setMint(uint256 _mint) public {
+        mint = _mint;
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        vat.mint(address(this), mintRad);
-        vat.move(address(this), address(flash), _amount + mintRad);
+        TestVat _vat = TestVat(address(vat));
+        _vat.mint(address(this), rad(mint));
+
+        vat.move(address(this), address(flash), rad(add(_amount, mint)));
     }
 
 }
 
-contract TestReentrancyReceiver is IFlashMintReceiver {
+contract TestReentrancyReceiver is FlashMintReceiverBase {
 
-    TestVat vat;
-    DssFlash flash;
     TestImmediatePaybackReceiver immediatePaybackReceiver;
 
     // --- Init ---
-    constructor(address vat_, address flash_) public {
-        vat = TestVat(vat_);
-        flash = DssFlash(flash_);
-        immediatePaybackReceiver = new TestImmediatePaybackReceiver(vat_, flash_);
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
+        immediatePaybackReceiver = new TestImmediatePaybackReceiver(_flash, _vat);
     }
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
         flash.mint(address(immediatePaybackReceiver), _amount + _fee, _params);
-        vat.move(address(this), address(flash), _amount + _fee);
+
+        completeTransaction(_amount, _fee);
     }
 
 }
 
-contract TestDEXTradeReceiver is IFlashMintReceiver {
+contract TestDEXTradeReceiver is FlashMintReceiverBase {
 
-    TestVat vat;
-    DssFlash flash;
     Dai dai;
     DaiJoin daiJoin;
     DSToken gold;
     GemJoin gemA;
     bytes32 ilk;
 
-    uint256 constant ONE = 10 ** 27;
-
     // --- Init ---
-    constructor(address vat_, address flash_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) public {
-        vat = TestVat(vat_);
-        flash = DssFlash(flash_);
+    constructor(address flash_, address vat_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) FlashMintReceiverBase(flash_, vat_) public {
         dai = Dai(dai_);
         daiJoin = DaiJoin(daiJoin_);
         gold = DSToken(gold_);
@@ -149,23 +132,23 @@ contract TestDEXTradeReceiver is IFlashMintReceiver {
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
         address me = address(this);
-        uint256 amountWad = _amount / ONE;
-        uint256 feeWad = _fee / ONE;
-        uint256 totalDebtWad = (_amount + _fee) / ONE;
-        uint256 goldAmount = totalDebtWad * 3;
+        uint256 totalDebt = _amount + _fee;
+        uint256 goldAmount = totalDebt * 3;
+        TestVat _vat = TestVat(address(vat));
 
-        vat.hope(address(daiJoin));
-        daiJoin.exit(me, amountWad);
+        _vat.hope(address(daiJoin));
+        daiJoin.exit(me, _amount);
 
         // Perform a "trade"
-        dai.burn(me, amountWad);
+        dai.burn(me, _amount);
         gold.mint(me, goldAmount);
 
         // Mint some more dai to repay the original loan
         gold.approve(address(gemA));
         gemA.join(me, goldAmount);
-        vat.frob(ilk, me, me, me, int256(goldAmount), int256(totalDebtWad));
-        vat.move(me, address(flash), _amount + _fee);
+        _vat.frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
+
+        completeTransaction(_amount, _fee);
     }
 
 }
@@ -261,16 +244,16 @@ contract DssFlashTest is DSTest {
         flash.file("line", rad(1000 ether));
         vat.rely(address(flash));
 
-        immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(vat), address(flash));
-        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(vat), address(flash));
-        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(vat), address(flash));
-        reentrancyReceiver = new TestReentrancyReceiver(address(vat), address(flash));
-        dexTradeReceiver = new TestDEXTradeReceiver(address(vat), address(flash), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
+        immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash), address(vat));
+        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash), address(vat));
+        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash), address(vat));
+        reentrancyReceiver = new TestReentrancyReceiver(address(flash), address(vat));
+        dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(vat), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
         dai.rely(address(dexTradeReceiver));
     }
 
     function test_mint_no_fee_payback () public {
-        flash.mint(address(immediatePaybackReceiver), rad(10 ether), msg.data);
+        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
     }
 
     // test mint() for_amount <= 0
@@ -280,35 +263,35 @@ contract DssFlashTest is DSTest {
 
     // test mint() for _amount > line
     function testFail_mint_amount_over_line () public {
-        flash.mint(address(immediatePaybackReceiver), rad(1001 ether), msg.data);
+        flash.mint(address(immediatePaybackReceiver), 1001 ether, msg.data);
     }
 
     // test line == 0 means flash minting is halted
     function testFail_mint_line_zero () public {
         flash.file("line", 0);
 
-        flash.mint(address(immediatePaybackReceiver), rad(10 ether), msg.data);
+        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
     }
 
     // test mint() for _data == 0
     function testFail_mint_empty_data () public {
-        flash.mint(address(immediatePaybackReceiver), rad(10 ether), "");
+        flash.mint(address(immediatePaybackReceiver), 10 ether, "");
     }
 
     // test unauthorized suck() reverts
     function testFail_mint_unauthorized_suck () public {
         vat.deny(address(flash));
 
-        flash.mint(address(immediatePaybackReceiver), rad(10 ether), msg.data);
+        flash.mint(address(immediatePaybackReceiver), 10 ether, msg.data);
     }
 
     // test happy path execute() returns vat.dai() == add(_amount, fee)
     //       Make sure we test core system accounting balances before and after.
     function test_mint_with_fee () public {
         flash.file("toll", RATE_ONE_PCT);
-        mintAndPaybackReceiver.setMint(rad(10 ether));
+        mintAndPaybackReceiver.setMint(10 ether);
 
-        flash.mint(address(mintAndPaybackReceiver), rad(100 ether), msg.data);
+        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
 
         assertEq(vow.Joy(), rad(1 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
@@ -321,35 +304,35 @@ contract DssFlashTest is DSTest {
         // Move some collateral to the flash so it preexists the loan
         vat.move(address(this), address(flash), rad(1 ether));
 
-        mintAndPaybackReceiver.setMint(rad(10 ether));
+        mintAndPaybackReceiver.setMint(10 ether);
 
-        flash.mint(address(mintAndPaybackReceiver), rad(100 ether), msg.data);
+        flash.mint(address(mintAndPaybackReceiver), 100 ether, msg.data);
 
         assertEq(vow.Joy(), rad(1 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
-        // Ensure preexistin amount remains in flash
+        // Ensure pre-existing amount remains in flash
         assertEq(vat.dai(address(flash)), rad(1 ether));
     }
 
     // test execute that return vat.dai() < add(_amount, fee) fails
     function testFail_mint_insufficient_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(rad(4 ether));
+        mintAndPaybackAllReceiver.setMint(4 ether);
 
-        flash.mint(address(mintAndPaybackAllReceiver), rad(100 ether), msg.data);
+        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
     }
 
     // test execute that return vat.dai() > add(_amount, fee) fails
     function testFail_mint_too_much_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(rad(8 ether));
+        mintAndPaybackAllReceiver.setMint(8 ether);
 
-        flash.mint(address(mintAndPaybackAllReceiver), rad(100 ether), msg.data);
+        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, msg.data);
     }
 
     // test reentrancy disallowed
     function testFail_mint_reentrancy () public {
-        flash.mint(address(reentrancyReceiver), rad(100 ether), msg.data);
+        flash.mint(address(reentrancyReceiver), 100 ether, msg.data);
     }
 
     // test trading flash minted dai for gold and minting more dai
@@ -357,7 +340,7 @@ contract DssFlashTest is DSTest {
         // Set the owner temporarily to allow the receiver to mint
         gold.setOwner(address(dexTradeReceiver));
 
-        flash.mint(address(dexTradeReceiver), rad(100 ether), msg.data);
+        flash.mint(address(dexTradeReceiver), 100 ether, msg.data);
     }
 
 
