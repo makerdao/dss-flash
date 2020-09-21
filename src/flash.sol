@@ -79,7 +79,6 @@ contract DssFlash {
 
         require(amount > 0, "DssFlash/amount-zero");
         require(amount <= line, "DssFlash/ceiling-exceeded");
-        require(_data.length > 0, "DssFlash/empty-calldata");
 
         IFlashMintReceiver receiver = IFlashMintReceiver(_receiver);
 
