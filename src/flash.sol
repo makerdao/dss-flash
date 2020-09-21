@@ -28,10 +28,10 @@ contract DssFlash {
     uint256 private locked; // reentrancy guard
 
     modifier lock {
-        require(locked == 1, "DssFlash/reentrancy-guard");
-        locked = 2;
+        locked += 1;
+        uint256 localLocked = locked;
         _;
-        locked = 1;
+        require(localLocked == locked, "DssFlash/reentrancy-guard");
     }
 
     // --- Init ---
