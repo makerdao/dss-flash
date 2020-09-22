@@ -75,14 +75,14 @@ contract DssFlash {
         uint256 _amount,        // amount to flash mint [wad]
         bytes calldata _data    // calldata
     ) external lock {
-        uint256 amount = rad(_amount);
+        uint256 arad = rad(_amount);
 
-        require(amount > 0, "DssFlash/amount-zero");
-        require(amount <= line, "DssFlash/ceiling-exceeded");
+        require(arad > 0, "DssFlash/amount-zero");
+        require(arad <= line, "DssFlash/ceiling-exceeded");
 
         IFlashMintReceiver receiver = IFlashMintReceiver(_receiver);
 
-        vat.suck(address(this), _receiver, amount);
+        vat.suck(address(this), _receiver, arad);
         uint256 fee = wmul(_amount, toll);
         uint256 bal = vat.dai(address(this));
 
@@ -90,7 +90,7 @@ contract DssFlash {
 
         require(vat.dai(address(this)) == add(bal, rad(add(_amount, fee))), "DssFlash/invalid-payback");
 
-        vat.heal(amount);
+        vat.heal(arad);
         vat.move(address(this), vow, rad(fee));
     }
 
