@@ -47,9 +47,9 @@ contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
     constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         // Just pay back the original amount
-        completeTransaction(_amount, _fee);
+        payBackFunds(_amount, _fee);
     }
 
 }
@@ -66,11 +66,11 @@ contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
-        completeTransaction(_amount, _fee);
+        payBackFunds(_amount, _fee);
     }
 
 }
@@ -87,11 +87,27 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
         vat.move(address(this), address(flash), rad(add(_amount, mint)));
+    }
+
+}
+
+contract TestMintAndPaybackDataReceiver is FlashMintReceiverBase {
+
+    // --- Init ---
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
+    }
+
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+        (uint256 mintAmount) = abi.decode(_data, (uint256));
+        TestVat _vat = TestVat(address(vat));
+        _vat.mint(address(this), rad(mintAmount));
+
+        payBackFunds(_amount, _fee);
     }
 
 }
@@ -105,10 +121,10 @@ contract TestReentrancyReceiver is FlashMintReceiverBase {
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(_flash, _vat);
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
-        flash.mint(address(immediatePaybackReceiver), _amount + _fee, _params);
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+        flash.mint(address(immediatePaybackReceiver), _amount + _fee, _data);
 
-        completeTransaction(_amount, _fee);
+        payBackFunds(_amount, _fee);
     }
 
 }
@@ -130,7 +146,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         ilk = ilk_;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _params) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         address me = address(this);
         uint256 totalDebt = _amount + _fee;
         uint256 goldAmount = totalDebt * 3;
@@ -148,7 +164,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         gemA.join(me, goldAmount);
         _vat.frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
 
-        completeTransaction(_amount, _fee);
+        payBackFunds(_amount, _fee);
     }
 
 }
@@ -172,6 +188,7 @@ contract DssFlashTest is DSTest {
     TestImmediatePaybackReceiver immediatePaybackReceiver;
     TestMintAndPaybackReceiver mintAndPaybackReceiver;
     TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
+    TestMintAndPaybackDataReceiver mintAndPaybackDataReceiver;
     TestReentrancyReceiver reentrancyReceiver;
     TestDEXTradeReceiver dexTradeReceiver;
 
@@ -247,6 +264,7 @@ contract DssFlashTest is DSTest {
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash), address(vat));
         mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash), address(vat));
         mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash), address(vat));
+        mintAndPaybackDataReceiver = new TestMintAndPaybackDataReceiver(address(flash), address(vat));
         reentrancyReceiver = new TestReentrancyReceiver(address(flash), address(vat));
         dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(vat), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
         dai.rely(address(dexTradeReceiver));
@@ -325,6 +343,17 @@ contract DssFlashTest is DSTest {
         flash.mint(address(mintAndPaybackAllReceiver), 100 ether, "");
     }
 
+    // test that data sends properly
+    function test_mint_data () public {
+        flash.file("toll", 5 * RATE_ONE_PCT);
+        uint256 mintAmount = 8 ether;
+
+        flash.mint(address(mintAndPaybackDataReceiver), 100 ether, abi.encodePacked(mintAmount));
+
+        assertEq(vow.Joy(), rad(5 ether));
+        assertEq(vat.dai(address(mintAndPaybackDataReceiver)), rad(3 ether));
+    }
+
     // test reentrancy disallowed
     function testFail_mint_reentrancy () public {
         flash.mint(address(reentrancyReceiver), 100 ether, "");
@@ -337,13 +366,5 @@ contract DssFlashTest is DSTest {
 
         flash.mint(address(dexTradeReceiver), 100 ether, "");
     }
-
-
-
-    // TODO:
-    //       - Flash mint that moves DAI around in core without DaiJoin.exit()
-    //           - should test
-    //       - Flash mint with custom data
-    //           - should test
 
 }

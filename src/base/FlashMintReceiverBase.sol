@@ -22,8 +22,8 @@ abstract contract FlashMintReceiverBase is IFlashMintReceiver {
         require((z = x + y) >= x);
     }
 
-    // --- Transaction ---
-    function completeTransaction(uint _amount, uint _fee) internal {
+    // --- Helper Functions ---
+    function payBackFunds(uint _amount, uint _fee) internal {
         vat.move(address(this), address(flash), rad(add(_amount, _fee)));
     }
 
