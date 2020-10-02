@@ -12,8 +12,8 @@ interface VatLike {
 contract DssFlash {
 
     // --- Auth ---
-    function rely(address guy) external auth { wards[guy] = 1; }
-    function deny(address guy) external auth { wards[guy] = 0; }
+    function rely(address guy) external auth { emit Rely(guy); wards[guy] = 1; }
+    function deny(address guy) external auth { emit Deny(guy); wards[guy] = 0; }
     mapping (address => uint256) public wards;
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
@@ -26,6 +26,13 @@ contract DssFlash {
     uint256 public  line;   // Debt Ceiling  [rad]
     uint256 public  toll;   // Fee           [wad]
     uint256 private locked; // reentrancy guard
+
+    // --- Events ---
+    event Rely(address indexed usr);
+    event Deny(address indexed usr);
+    event File(bytes32 indexed what, uint256 data);
+    event File(bytes32 indexed what, address data);
+    event Mint(address indexed receiver, uint256 amount, uint256 fee);
 
     modifier lock {
         locked += 1;
@@ -62,11 +69,13 @@ contract DssFlash {
     function file(bytes32 what, address addr) external auth {
         if (what == "vow") vow = addr;
         else revert("DssFlash/file-unrecognized-param");
+        emit File(what, addr);
     }
     function file(bytes32 what, uint256 data) external auth {
         if (what == "line") line = data;
         else if (what == "toll") toll = data;
         else revert("DssFlash/file-unrecognized-param");
+        emit File(what, data);
     }
 
     // --- Mint ---
@@ -92,6 +101,7 @@ contract DssFlash {
 
         vat.heal(arad);
         vat.move(address(this), vow, rad(fee));
+        emit Mint(_receiver, _amount, fee);
     }
 
 }
