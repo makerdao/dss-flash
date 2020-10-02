@@ -50,7 +50,7 @@ contract DssFlash {
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
     function rad(uint256 wad) internal pure returns (uint256) {
-        return wad * 10 ** 27;
+        return mul(wad, 10 ** 27);
     }
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
@@ -58,10 +58,8 @@ contract DssFlash {
     function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
-    function wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        z = x * y;
-        require(y == 0 || z / y == x);
-        z = z / WAD;
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x);
     }
 
     // --- Administration ---
@@ -89,7 +87,7 @@ contract DssFlash {
         require(arad <= line, "DssFlash/ceiling-exceeded");
 
         vat.suck(address(this), _receiver, arad);
-        uint256 fee = wmul(_amount, toll);
+        uint256 fee = mul(_amount, toll) / WAD;
         uint256 bal = vat.dai(address(this));
 
         IFlashMintReceiver(_receiver).execute(_amount, fee, _data);
