@@ -47,7 +47,7 @@ contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
     constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         // Just pay back the original amount
         payBackFunds(_amount, _fee);
     }
@@ -66,7 +66,7 @@ contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
@@ -87,7 +87,7 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256, bytes calldata) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
@@ -146,7 +146,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         ilk = ilk_;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         address me = address(this);
         uint256 totalDebt = _amount + _fee;
         uint256 goldAmount = totalDebt * 3;
