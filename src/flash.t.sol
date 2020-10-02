@@ -19,7 +19,7 @@ interface Hevm {
 }
 
 contract TestVat is Vat {
-    function mint(address usr, uint rad) public {
+    function mint(address usr, uint256 rad) public {
         dai[usr] += rad;
     }
 }
@@ -28,15 +28,15 @@ contract TestVow is Vow {
     constructor(address vat, address flapper, address flopper)
         public Vow(vat, flapper, flopper) {}
     // Total deficit
-    function Awe() public view returns (uint) {
+    function Awe() public view returns (uint256) {
         return vat.sin(address(this));
     }
     // Total surplus
-    function Joy() public view returns (uint) {
+    function Joy() public view returns (uint256) {
         return vat.dai(address(this));
     }
     // Unqueued, pre-auction debt
-    function Woe() public view returns (uint) {
+    function Woe() public view returns (uint256) {
         return sub(sub(Awe(), Sin), Ash);
     }
 }
@@ -200,11 +200,11 @@ contract DssFlashTest is DSTest {
 
     uint256 constant RATE_ONE_PCT = 10 ** 16;
 
-    function ray(uint wad) internal pure returns (uint) {
+    function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 9;
     }
 
-    function rad(uint wad) internal pure returns (uint) {
+    function rad(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 27;
     }
 

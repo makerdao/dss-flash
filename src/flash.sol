@@ -3,18 +3,18 @@ pragma solidity ^0.6.7;
 import "./interface/IFlashMintReceiver.sol";
 
 interface VatLike {
-    function dai(address) external view returns (uint);
+    function dai(address) external view returns (uint256);
     function move(address src, address dst, uint256 rad) external;
-    function heal(uint rad) external;
+    function heal(uint256 rad) external;
     function suck(address,address,uint256) external;
 }
 
 contract DssFlash {
 
     // --- Auth ---
-    mapping (address => uint) public wards;
     function rely(address guy) external auth { wards[guy] = 1; }
     function deny(address guy) external auth { wards[guy] = 0; }
+    mapping (address => uint256) public wards;
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
         _;
@@ -43,16 +43,16 @@ contract DssFlash {
 
     // --- Math ---
     uint256 constant WAD = 10 ** 18;
-    function rad(uint wad) internal pure returns (uint) {
+    function rad(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 27;
     }
-    function add(uint x, uint y) internal pure returns (uint z) {
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x);
     }
-    function wmul(uint x, uint y) internal pure returns (uint z) {
+    function wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         z = x * y;
         require(y == 0 || z / y == x);
         z = z / WAD;
@@ -63,7 +63,7 @@ contract DssFlash {
         if (what == "vow") vow = addr;
         else revert("DssFlash/file-unrecognized-param");
     }
-    function file(bytes32 what, uint data) external auth {
+    function file(bytes32 what, uint256 data) external auth {
         if (what == "line") line = data;
         else if (what == "toll") toll = data;
         else revert("DssFlash/file-unrecognized-param");
