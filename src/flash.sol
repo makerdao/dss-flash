@@ -88,13 +88,11 @@ contract DssFlash {
         require(arad > 0, "DssFlash/amount-zero");
         require(arad <= line, "DssFlash/ceiling-exceeded");
 
-        IFlashMintReceiver receiver = IFlashMintReceiver(_receiver);
-
         vat.suck(address(this), _receiver, arad);
         uint256 fee = wmul(_amount, toll);
         uint256 bal = vat.dai(address(this));
 
-        receiver.execute(_amount, fee, _data);
+        IFlashMintReceiver(_receiver).execute(_amount, fee, _data);
 
         require(vat.dai(address(this)) == add(bal, rad(add(_amount, fee))), "DssFlash/invalid-payback");
 
