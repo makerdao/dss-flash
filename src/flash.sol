@@ -35,17 +35,16 @@ contract DssFlash {
     event Mint(address indexed receiver, uint256 amount, uint256 fee);
 
     modifier lock {
-        locked += 1;
-        uint256 localLocked = locked;
+        require(locked == 0, "DssFlash/reentrancy-guard");
+        locked = 1;
         _;
-        require(localLocked == locked, "DssFlash/reentrancy-guard");
+        locked = 0;
     }
 
     // --- Init ---
     constructor(address _vat) public {
         wards[msg.sender] = 1;
         vat = VatLike(_vat);
-        locked = 1;
     }
 
     // --- Math ---
