@@ -19,7 +19,7 @@ interface Hevm {
 }
 
 contract TestVat is Vat {
-    function mint(address usr, uint rad) public {
+    function mint(address usr, uint256 rad) public {
         dai[usr] += rad;
     }
 }
@@ -28,15 +28,15 @@ contract TestVow is Vow {
     constructor(address vat, address flapper, address flopper)
         public Vow(vat, flapper, flopper) {}
     // Total deficit
-    function Awe() public view returns (uint) {
+    function Awe() public view returns (uint256) {
         return vat.sin(address(this));
     }
     // Total surplus
-    function Joy() public view returns (uint) {
+    function Joy() public view returns (uint256) {
         return vat.dai(address(this));
     }
     // Unqueued, pre-auction debt
-    function Woe() public view returns (uint) {
+    function Woe() public view returns (uint256) {
         return sub(sub(Awe(), Sin), Ash);
     }
 }
@@ -47,7 +47,7 @@ contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
     constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         // Just pay back the original amount
         payBackFunds(_amount, _fee);
     }
@@ -66,7 +66,7 @@ contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
@@ -87,7 +87,7 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256, bytes calldata) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
@@ -146,7 +146,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         ilk = ilk_;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         address me = address(this);
         uint256 totalDebt = _amount + _fee;
         uint256 goldAmount = totalDebt * 3;
@@ -200,11 +200,11 @@ contract DssFlashTest is DSTest {
 
     uint256 constant RATE_ONE_PCT = 10 ** 16;
 
-    function ray(uint wad) internal pure returns (uint) {
+    function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 9;
     }
 
-    function rad(uint wad) internal pure returns (uint) {
+    function rad(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 27;
     }
 
