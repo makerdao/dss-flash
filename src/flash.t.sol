@@ -42,25 +42,20 @@ contract TestVow is Vow {
 }
 
 contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
-
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
-    }
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {}
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
         // Just pay back the original amount
         payBackFunds(_amount, _fee);
     }
-
 }
 
 contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
-
     uint256 mint;
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
-    }
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {}
 
     function setMint(uint256 _mint) public {
         mint = _mint;
@@ -72,16 +67,13 @@ contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
 
         payBackFunds(_amount, _fee);
     }
-
 }
 
 contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
-
     uint256 mint;
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
-    }
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {}
 
     function setMint(uint256 _mint) public {
         mint = _mint;
@@ -93,14 +85,12 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
 
         vat.move(address(this), address(flash), rad(add(_amount, mint)));
     }
-
 }
 
 contract TestMintAndPaybackDataReceiver is FlashMintReceiverBase {
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
-    }
+    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {}
 
     function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         (uint256 mintAmount) = abi.decode(_data, (uint256));
@@ -109,7 +99,6 @@ contract TestMintAndPaybackDataReceiver is FlashMintReceiverBase {
 
         payBackFunds(_amount, _fee);
     }
-
 }
 
 contract TestReentrancyReceiver is FlashMintReceiverBase {
@@ -126,7 +115,6 @@ contract TestReentrancyReceiver is FlashMintReceiverBase {
 
         payBackFunds(_amount, _fee);
     }
-
 }
 
 contract TestDEXTradeReceiver is FlashMintReceiverBase {
@@ -185,12 +173,12 @@ contract DssFlashTest is DSTest {
 
     DssFlash flash;
 
-    TestImmediatePaybackReceiver immediatePaybackReceiver;
-    TestMintAndPaybackReceiver mintAndPaybackReceiver;
-    TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
+    TestImmediatePaybackReceiver   immediatePaybackReceiver;
+    TestMintAndPaybackReceiver     mintAndPaybackReceiver;
+    TestMintAndPaybackAllReceiver  mintAndPaybackAllReceiver;
     TestMintAndPaybackDataReceiver mintAndPaybackDataReceiver;
-    TestReentrancyReceiver reentrancyReceiver;
-    TestDEXTradeReceiver dexTradeReceiver;
+    TestReentrancyReceiver         reentrancyReceiver;
+    TestDEXTradeReceiver           dexTradeReceiver;
 
     // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
     bytes20 constant CHEAT_CODE =
@@ -256,17 +244,17 @@ contract DssFlashTest is DSTest {
         assertEq(vat.gem(ilk, me), 960 ether);
         assertEq(vat.dai(me), rad(100 ether));
 
-        // Basic auth and 1000 ether debt ceiling
+        // Basic auth and 1000 DAI debt ceiling
         flash.file("vow", address(vow));
         flash.file("line", rad(1000 ether));
         vat.rely(address(flash));
 
-        immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash), address(vat));
-        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash), address(vat));
-        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash), address(vat));
+        immediatePaybackReceiver   = new TestImmediatePaybackReceiver(address(flash), address(vat));
+        mintAndPaybackReceiver     = new TestMintAndPaybackReceiver(address(flash), address(vat));
+        mintAndPaybackAllReceiver  = new TestMintAndPaybackAllReceiver(address(flash), address(vat));
         mintAndPaybackDataReceiver = new TestMintAndPaybackDataReceiver(address(flash), address(vat));
-        reentrancyReceiver = new TestReentrancyReceiver(address(flash), address(vat));
-        dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(vat), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
+        reentrancyReceiver         = new TestReentrancyReceiver(address(flash), address(vat));
+        dexTradeReceiver           = new TestDEXTradeReceiver(address(flash), address(vat), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
         dai.rely(address(dexTradeReceiver));
     }
 
@@ -366,5 +354,4 @@ contract DssFlashTest is DSTest {
 
         flash.mint(address(dexTradeReceiver), 100 ether, "");
     }
-
 }

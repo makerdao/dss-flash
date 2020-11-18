@@ -26,5 +26,4 @@ abstract contract FlashMintReceiverBase is IFlashMintReceiver {
     function payBackFunds(uint _amount, uint _fee) internal {
         vat.move(address(this), address(flash), rad(add(_amount, _fee)));
     }
-
 }

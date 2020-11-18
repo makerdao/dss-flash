@@ -12,9 +12,9 @@ interface VatLike {
 contract DssFlash {
 
     // --- Auth ---
-    function rely(address guy) external auth { emit Rely(guy); wards[guy] = 1; }
-    function deny(address guy) external auth { emit Deny(guy); wards[guy] = 0; }
     mapping (address => uint256) public wards;
+    function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy);}
+    function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy);}
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
         _;
@@ -23,9 +23,9 @@ contract DssFlash {
     // --- Data ---
     VatLike public  vat;    // CDP Engine
     address public  vow;    // Debt Engine
-    uint256 public  line;   // Debt Ceiling  [rad]
-    uint256 public  toll;   // Fee           [wad]
-    uint256 private locked; // reentrancy guard
+    uint256 public  line;   // Debt Ceiling     [rad]
+    uint256 public  toll;   // Fee              [wad]
+    uint256 private locked; // Reentrancy guard
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -77,27 +77,27 @@ contract DssFlash {
 
     // --- Mint ---
     function mint(
-        address _receiver,      // address of conformant IFlashMintReceiver
-        uint256 _amount,        // amount to flash mint [wad]
-        bytes calldata _data    // arbitrary data to pass to the _receiver
+        address bolt,         // Address of conformant IFlashMintReceiver
+        uint256 wad,          // Amount to flash mint [wad]
+        bytes calldata _data  // Arbitrary data to pass to the bolt
     ) external lock {
-        uint256 arad = rad(_amount);
+        uint256 dai = rad(wad);
 
-        require(arad > 0, "DssFlash/amount-zero");
-        require(arad <= line, "DssFlash/ceiling-exceeded");
+        require(dai > 0,     "DssFlash/amount-zero");
+        require(dai <= line, "DssFlash/ceiling-exceeded");
 
-        vat.suck(address(this), _receiver, arad);
+        vat.suck(address(this), bolt, dai);
 
-        uint256 fee = mul(_amount, toll) / WAD;
+        uint256 fee = mul(wad, toll) / WAD;
         uint256 bal = vat.dai(address(this));
 
-        IFlashMintReceiver(_receiver).execute(_amount, fee, _data);
+        IFlashMintReceiver(bolt).execute(wad, fee, _data);
 
-        uint256 frad = rad(fee);
-        require(vat.dai(address(this)) == add(bal, add(arad, frad)), "DssFlash/invalid-payback");
+        uint256 due = rad(fee);
+        require(vat.dai(address(this)) == add(bal, add(dai, due)), "DssFlash/invalid-payback");
 
-        vat.heal(arad);
-        vat.move(address(this), vow, frad);
-        emit Mint(_receiver, _amount, fee);
+        vat.heal(dai);
+        vat.move(address(this), vow, due);
+        emit Mint(bolt, wad, fee);
     }
 }
