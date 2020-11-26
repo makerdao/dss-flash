@@ -44,6 +44,7 @@ contract DssFlash {
     // --- Init ---
     constructor(address _vat) public {
         wards[msg.sender] = 1;
+        emit Rely(msg.sender);
         vat = VatLike(_vat);
     }
 
