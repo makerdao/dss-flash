@@ -84,7 +84,6 @@ contract DssFlash {
     ) external lock {
         uint256 arad = rad(_amount);
 
-        require(arad > 0, "DssFlash/amount-zero");
         require(arad <= line, "DssFlash/ceiling-exceeded");
 
         vat.suck(address(this), _receiver, arad);
