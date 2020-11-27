@@ -53,12 +53,6 @@ contract DssFlash {
     function rad(uint256 wad) internal pure returns (uint256) {
         return mul(wad, 10 ** 27);
     }
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x);
-    }
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x);
-    }
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
@@ -90,15 +84,11 @@ contract DssFlash {
         vat.suck(address(this), _receiver, arad);
 
         uint256 fee = mul(_amount, toll) / WAD;
-        uint256 bal = vat.dai(address(this));
 
         IFlashMintReceiver(_receiver).onFlashMint(_amount, fee, _data);
 
-        uint256 frad = rad(fee);
-        require(vat.dai(address(this)) == add(bal, add(arad, frad)), "DssFlash/invalid-payback");
-
         vat.heal(arad);
-        vat.move(address(this), vow, frad);
+        vat.move(address(this), vow, rad(fee));
         emit Mint(_receiver, _amount, fee);
     }
 }
