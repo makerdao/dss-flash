@@ -47,7 +47,7 @@ contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
     constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
+    function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata) external override {
         // Just pay back the original amount
         payBackFunds(_amount, _fee);
     }
@@ -66,7 +66,7 @@ contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
+    function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
@@ -87,7 +87,7 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
         mint = _mint;
     }
 
-    function execute(uint256 _amount, uint256, bytes calldata) external override {
+    function onFlashMint(uint256 _amount, uint256, bytes calldata) external override {
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mint));
 
@@ -102,7 +102,7 @@ contract TestMintAndPaybackDataReceiver is FlashMintReceiverBase {
     constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         (uint256 mintAmount) = abi.decode(_data, (uint256));
         TestVat _vat = TestVat(address(vat));
         _vat.mint(address(this), rad(mintAmount));
@@ -121,7 +121,7 @@ contract TestReentrancyReceiver is FlashMintReceiverBase {
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(_flash, _vat);
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
+    function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
         flash.mint(address(immediatePaybackReceiver), _amount + _fee, _data);
 
         payBackFunds(_amount, _fee);
@@ -146,7 +146,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         ilk = ilk_;
     }
 
-    function execute(uint256 _amount, uint256 _fee, bytes calldata) external override {
+    function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata) external override {
         address me = address(this);
         uint256 totalDebt = _amount + _fee;
         uint256 goldAmount = totalDebt * 3;
@@ -298,7 +298,7 @@ contract DssFlashTest is DSTest {
         flash.mint(address(immediatePaybackReceiver), 10 ether, "");
     }
 
-    // test happy path execute() returns vat.dai() == add(_amount, fee)
+    // test happy path onFlashMint() returns vat.dai() == add(_amount, fee)
     //       Make sure we test core system accounting balances before and after.
     function test_mint_with_fee () public {
         flash.file("toll", RATE_ONE_PCT);
@@ -327,7 +327,7 @@ contract DssFlashTest is DSTest {
         assertEq(vat.dai(address(flash)), rad(1 ether));
     }
 
-    // test execute that return vat.dai() < add(_amount, fee) fails
+    // test onFlashMint that return vat.dai() < add(_amount, fee) fails
     function testFail_mint_insufficient_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
         mintAndPaybackAllReceiver.setMint(4 ether);
@@ -335,7 +335,7 @@ contract DssFlashTest is DSTest {
         flash.mint(address(mintAndPaybackAllReceiver), 100 ether, "");
     }
 
-    // test execute that return vat.dai() > add(_amount, fee) fails
+    // test onFlashMint that return vat.dai() > add(_amount, fee) fails
     function testFail_mint_too_much_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
         mintAndPaybackAllReceiver.setMint(8 ether);
