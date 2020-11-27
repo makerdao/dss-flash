@@ -35,10 +35,10 @@ contract DssFlash {
     event Mint(address indexed receiver, uint256 amount, uint256 fee);
 
     modifier lock {
-        require(locked == 0, "DssFlash/reentrancy-guard");
-        locked = 1;
+        require(locked == 1, "DssFlash/reentrancy-guard");
+        locked = 2;
         _;
-        locked = 0;
+        locked = 1;
     }
 
     // --- Init ---
@@ -46,6 +46,7 @@ contract DssFlash {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
         vat = VatLike(_vat);
+        locked = 1;
     }
 
     // --- Math ---
