@@ -92,7 +92,7 @@ contract DssFlash {
         uint256 fee = mul(_amount, toll) / WAD;
         uint256 bal = vat.dai(address(this));
 
-        IFlashMintReceiver(_receiver).onFlashMint(_amount, fee, _data);
+        IFlashMintReceiver(_receiver).onFlashMint(msg.sender, _amount, fee, _data);
 
         uint256 frad = rad(fee);
         require(vat.dai(address(this)) == add(bal, add(arad, frad)), "DssFlash/invalid-payback");
