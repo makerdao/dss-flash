@@ -9,9 +9,9 @@ abstract contract FlashMintReceiverBase is IFlashMintReceiver {
     VatLike public vat;
 
     // --- Init ---
-    constructor(address _flash, address _vat) public {
+    constructor(address _flash) public {
         flash = DssFlash(_flash);
-        vat = VatLike(_vat);
+        vat = flash.vat();
     }
 
     // --- Math ---

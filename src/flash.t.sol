@@ -44,7 +44,7 @@ contract TestVow is Vow {
 contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
+    constructor(address _flash) FlashMintReceiverBase(_flash) public {
     }
 
     function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata) external override {
@@ -59,7 +59,7 @@ contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
     uint256 mint;
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
+    constructor(address _flash) FlashMintReceiverBase(_flash) public {
     }
 
     function setMint(uint256 _mint) public {
@@ -80,7 +80,7 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
     uint256 mint;
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
+    constructor(address _flash) FlashMintReceiverBase(_flash) public {
     }
 
     function setMint(uint256 _mint) public {
@@ -99,7 +99,7 @@ contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
 contract TestMintAndPaybackDataReceiver is FlashMintReceiverBase {
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
+    constructor(address _flash) FlashMintReceiverBase(_flash) public {
     }
 
     function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
@@ -117,8 +117,8 @@ contract TestReentrancyReceiver is FlashMintReceiverBase {
     TestImmediatePaybackReceiver immediatePaybackReceiver;
 
     // --- Init ---
-    constructor(address _flash, address _vat) FlashMintReceiverBase(_flash, _vat) public {
-        immediatePaybackReceiver = new TestImmediatePaybackReceiver(_flash, _vat);
+    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+        immediatePaybackReceiver = new TestImmediatePaybackReceiver(_flash);
     }
 
     function onFlashMint(uint256 _amount, uint256 _fee, bytes calldata _data) external override {
@@ -138,7 +138,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
     bytes32 ilk;
 
     // --- Init ---
-    constructor(address flash_, address vat_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) FlashMintReceiverBase(flash_, vat_) public {
+    constructor(address flash_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) FlashMintReceiverBase(flash_) public {
         dai = Dai(dai_);
         daiJoin = DaiJoin(daiJoin_);
         gold = DSToken(gold_);
@@ -261,12 +261,12 @@ contract DssFlashTest is DSTest {
         flash.file("line", rad(1000 ether));
         vat.rely(address(flash));
 
-        immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash), address(vat));
-        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash), address(vat));
-        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash), address(vat));
-        mintAndPaybackDataReceiver = new TestMintAndPaybackDataReceiver(address(flash), address(vat));
-        reentrancyReceiver = new TestReentrancyReceiver(address(flash), address(vat));
-        dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(vat), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
+        immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash));
+        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash));
+        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash));
+        mintAndPaybackDataReceiver = new TestMintAndPaybackDataReceiver(address(flash));
+        reentrancyReceiver = new TestReentrancyReceiver(address(flash));
+        dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
         dai.rely(address(dexTradeReceiver));
     }
 
