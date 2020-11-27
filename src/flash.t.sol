@@ -219,9 +219,9 @@ contract DssFlashTest is DSTest {
         spot = new Spotter(address(vat));
         vat.rely(address(spot));
 
-        flash = new DssFlash(address(vat));
-
         vow = new TestVow(address(vat), address(0), address(0));
+
+        flash = new DssFlash(address(vat), address(vow));
 
         gold = new DSToken("GEM");
         gold.mint(1000 ether);
@@ -257,7 +257,6 @@ contract DssFlashTest is DSTest {
         assertEq(vat.dai(me), rad(100 ether));
 
         // Basic auth and 1000 ether debt ceiling
-        flash.file("vow", address(vow));
         flash.file("line", rad(1000 ether));
         vat.rely(address(flash));
 
