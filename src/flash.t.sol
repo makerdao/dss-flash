@@ -41,6 +41,18 @@ contract TestVow is Vow {
     }
 }
 
+contract TestDoNothingReceiver is FlashMintReceiverBase {
+
+    // --- Init ---
+    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    }
+
+    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override {
+        // Don't do anything
+    }
+
+}
+
 contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
 
     // --- Init ---
@@ -185,6 +197,7 @@ contract DssFlashTest is DSTest {
 
     DssFlash flash;
 
+    TestDoNothingReceiver doNothingReceiver;
     TestImmediatePaybackReceiver immediatePaybackReceiver;
     TestMintAndPaybackReceiver mintAndPaybackReceiver;
     TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
@@ -260,6 +273,7 @@ contract DssFlashTest is DSTest {
         flash.file("line", rad(1000 ether));
         vat.rely(address(flash));
 
+        doNothingReceiver = new TestDoNothingReceiver(address(flash));
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash));
         mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash));
         mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash));
@@ -334,12 +348,23 @@ contract DssFlashTest is DSTest {
         flash.mint(address(mintAndPaybackAllReceiver), 100 ether, "");
     }
 
-    // test onFlashMint that return vat.dai() > add(_amount, fee) fails
-    function testFail_mint_too_much_dai () public {
+    // test onFlashMint that return vat.dai() > add(_amount, fee)
+    function test_mint_too_much_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(8 ether);
+        mintAndPaybackAllReceiver.setMint(10 ether);
 
+        // First mint overpays
         flash.mint(address(mintAndPaybackAllReceiver), 100 ether, "");
+
+        assertEq(vow.Joy(), rad(5 ether));
+        assertEq(vat.dai(address(flash)), rad(5 ether));
+
+        // Second mint can just take the Dai in the flash contract without repaying
+        flash.mint(address(doNothingReceiver), 4 ether, "");
+
+        assertEq(vow.Joy(), rad(5 ether + 4 ether / 20));
+        assertEq(vat.dai(address(flash)), rad(5 ether - 4 ether - 4 ether / 20));
+        assertEq(vat.dai(address(doNothingReceiver)), rad(4 ether));
     }
 
     // test that data sends properly
