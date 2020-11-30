@@ -273,8 +273,8 @@ contract DssFlashTest is DSTest {
         flash.mint(address(immediatePaybackReceiver), 10 ether, "");
     }
 
-    // test mint() for_amount <= 0
-    function testFail_mint_zero_amount () public {
+    // test mint() for _amount == 0
+    function test_mint_zero_amount () public {
         flash.mint(address(immediatePaybackReceiver), 0, "");
     }
 
