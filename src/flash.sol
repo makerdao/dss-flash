@@ -21,11 +21,11 @@ contract DssFlash {
     }
 
     // --- Data ---
-    VatLike public  vat;    // CDP Engine
-    address public  vow;    // Debt Engine
-    uint256 public  line;   // Debt Ceiling  [rad]
-    uint256 public  toll;   // Fee           [wad]
-    uint256 private locked; // reentrancy guard
+    VatLike public immutable  vat;    // CDP Engine
+    address public immutable  vow;    // Debt Engine
+    uint256 public  line;             // Debt Ceiling  [rad]
+    uint256 public  toll;             // Fee           [wad]
+    uint256 private locked;           // reentrancy guard
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -42,10 +42,11 @@ contract DssFlash {
     }
 
     // --- Init ---
-    constructor(address _vat) public {
+    constructor(address _vat, address _vow) public {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
         vat = VatLike(_vat);
+        vow = _vow;
     }
 
     // --- Math ---
@@ -64,11 +65,6 @@ contract DssFlash {
     }
 
     // --- Administration ---
-    function file(bytes32 what, address addr) external auth {
-        if (what == "vow") vow = addr;
-        else revert("DssFlash/file-unrecognized-param");
-        emit File(what, addr);
-    }
     function file(bytes32 what, uint256 data) external auth {
         if (what == "line") line = data;
         else if (what == "toll") toll = data;
