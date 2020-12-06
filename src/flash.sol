@@ -1,6 +1,6 @@
 pragma solidity ^0.6.7;
 
-import "./interface/IFlashMintReceiver.sol";
+import "./interface/IFlashLoanReceiver.sol";
 
 interface VatLike {
     function dai(address) external view returns (uint256);
@@ -66,10 +66,10 @@ contract DssFlash {
         emit File(what, data);
     }
 
-    // --- Mint ---
-    function mint(
-        address _receiver,      // address of conformant IFlashMintReceiver
-        uint256 _amount,        // amount to flash mint [wad]
+    // --- flashLoan ---
+    function flashLoan(
+        address _receiver,      // address of conformant IFlashLoanReceiver
+        uint256 _amount,        // amount to flash loan [wad]
         bytes calldata _data    // arbitrary data to pass to the _receiver
     ) external lock {
         uint256 arad = rad(_amount);
@@ -80,7 +80,7 @@ contract DssFlash {
 
         uint256 fee = mul(_amount, toll) / WAD;
 
-        IFlashMintReceiver(_receiver).onFlashMint(msg.sender, _amount, fee, _data);
+        IFlashLoanReceiver(_receiver).onFlashLoan(msg.sender, _amount, fee, _data);
 
         vat.heal(arad);
         vat.move(address(this), vow, rad(fee));

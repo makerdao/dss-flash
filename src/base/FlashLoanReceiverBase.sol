@@ -1,9 +1,9 @@
 pragma solidity ^0.6.7;
 
 import "../flash.sol";
-import "../interface/IFlashMintReceiver.sol";
+import "../interface/IFlashLoanReceiver.sol";
 
-abstract contract FlashMintReceiverBase is IFlashMintReceiver {
+abstract contract FlashLoanReceiverBase is IFlashLoanReceiver {
 
     DssFlash public flash;
     VatLike public vat;
