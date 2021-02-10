@@ -17,8 +17,8 @@ interface VatLike {
 contract DssFlash is IERC3156FlashLender {
 
     // --- Auth ---
-    function rely(address guy) external auth { emit Rely(guy); wards[guy] = 1; }
-    function deny(address guy) external auth { emit Deny(guy); wards[guy] = 0; }
+    function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
+    function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
     mapping (address => uint256) public wards;
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
