@@ -243,6 +243,32 @@ contract TestDEXTradeReceiver is FlashLoanReceiverBase {
 
 }
 
+contract TestBadReturn is FlashLoanReceiverBase {
+
+    bytes32 constant BAD_HASH = keccak256("my bad hash");
+
+    // --- Init ---
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
+    }
+
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        payBack(add(_amount, _fee));
+
+        return BAD_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        payBackVatDai(add(_amount, _fee));
+
+        return BAD_HASH;
+    }
+
+}
+
+contract TestNoCallbacks {
+
+}
+
 contract DssFlashTest is DSTest {
     Hevm hevm;
 
@@ -266,6 +292,8 @@ contract DssFlashTest is DSTest {
     TestLoanAndPaybackDataReceiver mintAndPaybackDataReceiver;
     TestReentrancyReceiver reentrancyReceiver;
     TestDEXTradeReceiver dexTradeReceiver;
+    TestBadReturn badReturn;
+    TestNoCallbacks noCallbacks;
 
     // CHEAT_CODE = 0x7109709ECfa91a80626fF3989D68f67F5b1DD12D
     bytes20 constant CHEAT_CODE =
@@ -342,35 +370,52 @@ contract DssFlashTest is DSTest {
         mintAndPaybackDataReceiver = new TestLoanAndPaybackDataReceiver(address(flash));
         reentrancyReceiver = new TestReentrancyReceiver(address(flash));
         dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
+        badReturn = new TestBadReturn(address(flash));
+        noCallbacks = new TestNoCallbacks();
         dai.rely(address(dexTradeReceiver));
     }
 
     function test_mint_no_fee_payback () public {
         flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
+        flash.flashLoan(immediatePaybackReceiver, address(dai), 10 ether, "");
     }
 
     // test mint() for _amount == 0
     function test_mint_zero_amount () public {
         flash.vatDaiFlashLoan(immediatePaybackReceiver, 0, "");
+        flash.flashLoan(immediatePaybackReceiver, address(dai), 0, "");
     }
 
     // test mint() for _amount > line
-    function testFail_mint_amount_over_line () public {
+    function testFail_mint_amount_over_line1 () public {
         flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(1001 ether), "");
+    }
+    function testFail_mint_amount_over_line2 () public {
+        flash.flashLoan(immediatePaybackReceiver, address(dai), 1001 ether, "");
     }
 
     // test line == 0 means flash minting is halted
-    function testFail_mint_line_zero () public {
+    function testFail_mint_line_zero1 () public {
         flash.file("line", 0);
 
         flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
     }
+    function testFail_mint_line_zero2 () public {
+        flash.file("line", 0);
+
+        flash.flashLoan(immediatePaybackReceiver, address(dai), 10 ether, "");
+    }
 
     // test unauthorized suck() reverts
-    function testFail_mint_unauthorized_suck () public {
+    function testFail_mint_unauthorized_suck1 () public {
         vat.deny(address(flash));
 
         flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
+    }
+    function testFail_mint_unauthorized_suck2 () public {
+        vat.deny(address(flash));
+
+        flash.flashLoan(immediatePaybackReceiver, address(dai), 10 ether, "");
     }
 
     // test happy path onFlashLoan() returns vat.dai() == add(_amount, fee)
@@ -441,8 +486,11 @@ contract DssFlashTest is DSTest {
     }
 
     // test reentrancy disallowed
-    function testFail_mint_reentrancy () public {
+    function testFail_mint_reentrancy1 () public {
         flash.vatDaiFlashLoan(reentrancyReceiver, rad(100 ether), "");
+    }
+    function testFail_mint_reentrancy2 () public {
+        flash.flashLoan(reentrancyReceiver, address(dai), rad(100 ether), "");
     }
 
     // test trading flash minted dai for gold and minting more dai
@@ -451,6 +499,44 @@ contract DssFlashTest is DSTest {
         gold.setOwner(address(dexTradeReceiver));
 
         flash.flashLoan(dexTradeReceiver, address(dai), 100 ether, "");
+    }
+
+    // test excessive max debt ceiling
+    function testFail_line_limit () public {
+        flash.file("line", 10 ** 45 + 1);
+    }
+
+    function test_max_flash_loan () public {
+        assertEq(flash.maxFlashLoan(address(dai)), 1000 ether);
+        assertEq(flash.maxFlashLoan(address(daiJoin)), 0);  // Any other address should be 0 as per the spec
+    }
+
+    function test_flash_fee () public {
+        flash.file("toll", 5 * RATE_ONE_PCT);
+        assertEq(flash.flashFee(address(dai), 100 ether), 5 ether);
+    }
+
+    function testFail_flash_fee () public {
+        flash.file("toll", 5 * RATE_ONE_PCT);
+        flash.flashFee(address(daiJoin), 100 ether);  // Any other address should fail
+    }
+
+    function testFail_bad_token () public {
+        flash.flashLoan(immediatePaybackReceiver, address(daiJoin), 100 ether, "");
+    }
+
+    function testFail_bad_return_hash1 () public {
+        flash.vatDaiFlashLoan(badReturn, rad(100 ether), "");
+    }
+    function testFail_bad_return_hash2 () public {
+        flash.flashLoan(badReturn, address(dai), 100 ether, "");
+    }
+
+    function testFail_no_callbacks1 () public {
+        flash.vatDaiFlashLoan(IVatDaiFlashLoanReceiver(address(noCallbacks)), rad(100 ether), "");
+    }
+    function testFail_no_callbacks2 () public {
+        flash.flashLoan(IERC3156FlashBorrower(address(noCallbacks)), address(dai), 100 ether, "");
     }
 
 }
