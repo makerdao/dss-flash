@@ -1,6 +1,7 @@
 pragma solidity ^0.6.7;
 
-import "./interface/IFlashLoanReceiver.sol";
+import "./interface/IERC3156FlashLender.sol";
+import "./interface/IERC3156FlashBorrower.sol";
 
 interface VatLike {
     function dai(address) external view returns (uint256);
@@ -9,7 +10,7 @@ interface VatLike {
     function suck(address,address,uint256) external;
 }
 
-contract DssFlash {
+contract DssFlash is IERC3156FlashLender {
 
     // --- Auth ---
     function rely(address guy) external auth { emit Rely(guy); wards[guy] = 1; }
@@ -23,6 +24,7 @@ contract DssFlash {
     // --- Data ---
     VatLike public immutable  vat;    // CDP Engine
     address public immutable  vow;    // Debt Engine
+    address public immutable  dai;    // Dai
     uint256 public  line;             // Debt Ceiling  [rad]
     uint256 public  toll;             // Fee           [wad]
     uint256 private locked;           // reentrancy guard
@@ -42,7 +44,7 @@ contract DssFlash {
     }
 
     // --- Init ---
-    constructor(address _vat, address _vow) public {
+    constructor(address _vat, address _vow, address _daiJoin) public {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
         vat = VatLike(_vat);
@@ -66,11 +68,33 @@ contract DssFlash {
         emit File(what, data);
     }
 
-    // --- flashLoan ---
+    // --- ERC 3156 Spec ---
+    function maxFlashLoan(
+        address token       // Unused
+    ) external view returns (uint256) {
+        if ()
+        return line;
+    }
+    function flashFee(
+        address token,      // Unused
+        uint256 amount
+    ) external view returns (uint256) {
+        return mul(amount, toll) / WAD;
+    }
     function flashLoan(
-        address _receiver,      // address of conformant IFlashLoanReceiver
-        uint256 _amount,        // amount to flash loan [wad]
-        bytes calldata _data    // arbitrary data to pass to the _receiver
+        IERC3156FlashBorrower receiver,
+        address token,      // Unused
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bool) {
+        
+    }
+
+    // --- Vat Dai Flash Loan ---
+    function vatDaiFlashLoan(
+        IVatDaiFlashLoanReceiver receiver,      // address of conformant IVatDaiFlashLoanReceiver
+        uint256 _amount,                        // amount to flash loan [rad]
+        bytes calldata data                     // arbitrary data to pass to the receiver
     ) external lock {
         uint256 arad = rad(_amount);
 
