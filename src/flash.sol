@@ -122,7 +122,8 @@ contract DssFlash is IERC3156FlashLender {
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
             "IERC3156: Callback failed"
         );
-
+        
+        dai.transferFrom(address(receiver), address(this), total);
         daiJoin.join(address(this), total);
         vat.heal(rad);
         vat.move(address(this), vow, mul(fee, RAY));
