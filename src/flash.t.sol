@@ -1,4 +1,4 @@
-pragma solidity ^0.6.7;
+pragma solidity ^0.6.11;
 
 import "ds-test/test.sol";
 import "ds-value/value.sol";
@@ -10,8 +10,7 @@ import {GemJoin, DaiJoin} from "dss/join.sol";
 import {Dai}              from "dss/dai.sol";
 
 import "./flash.sol";
-import "./interface/IFlashMintReceiver.sol";
-import "./base/FlashMintReceiverBase.sol";
+import "./base/FlashLoanReceiverBase.sol";
 
 interface Hevm {
     function warp(uint256) external;
@@ -41,107 +40,166 @@ contract TestVow is Vow {
     }
 }
 
-contract TestDoNothingReceiver is FlashMintReceiverBase {
+contract TestDoNothingReceiver is FlashLoanReceiverBase {
 
     // --- Init ---
-    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override {
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         // Don't do anything
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        // Don't do anything
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
 
-contract TestImmediatePaybackReceiver is FlashMintReceiverBase {
+contract TestImmediatePaybackReceiver is FlashLoanReceiverBase {
 
     // --- Init ---
-    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override {
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         // Just pay back the original amount
-        payBackFunds(_amount, _fee);
+        payBack(add(_amount, _fee));
+
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        // Just pay back the original amount
+        payBackVatDai(add(_amount, _fee));
+
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
 
-contract TestMintAndPaybackReceiver is FlashMintReceiverBase {
+contract TestLoanAndPaybackReceiver is FlashLoanReceiverBase {
 
     uint256 mint;
 
     // --- Init ---
-    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
     }
 
     function setMint(uint256 _mint) public {
         mint = _mint;
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override {
-        TestVat _vat = TestVat(address(vat));
-        _vat.mint(address(this), rad(mint));
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        TestVat(address(flash.vat())).mint(address(this), rad(mint));
+        flash.vat().hope(address(flash.daiJoin()));
+        flash.daiJoin().exit(address(this), mint);
 
-        payBackFunds(_amount, _fee);
+        payBack(add(_amount, _fee));
+
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        TestVat(address(flash.vat())).mint(address(this), rad(mint));
+
+        payBackVatDai(add(_amount, _fee));
+
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
 
-contract TestMintAndPaybackAllReceiver is FlashMintReceiverBase {
+contract TestLoanAndPaybackAllReceiver is FlashLoanReceiverBase {
 
     uint256 mint;
 
     // --- Init ---
-    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
     }
 
     function setMint(uint256 _mint) public {
         mint = _mint;
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256, bytes calldata) external override {
-        TestVat _vat = TestVat(address(vat));
-        _vat.mint(address(this), rad(mint));
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        TestVat(address(flash.vat())).mint(address(this), rad(mint));
+        flash.vat().hope(address(flash.daiJoin()));
+        flash.daiJoin().exit(address(this), mint);
 
-        vat.move(address(this), address(flash), rad(add(_amount, mint)));
+        payBack(add(_amount, mint));
+
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        TestVat(address(flash.vat())).mint(address(this), rad(mint));
+
+        payBackVatDai(add(_amount, rad(mint)));
+
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
 
-contract TestMintAndPaybackDataReceiver is FlashMintReceiverBase {
+contract TestLoanAndPaybackDataReceiver is FlashLoanReceiverBase {
 
     // --- Init ---
-    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override {
-        (uint256 mintAmount) = abi.decode(_data, (uint256));
-        TestVat _vat = TestVat(address(vat));
-        _vat.mint(address(this), rad(mintAmount));
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        (uint256 mint) = abi.decode(_data, (uint256));
+        TestVat(address(flash.vat())).mint(address(this), rad(mint));
+        flash.vat().hope(address(flash.daiJoin()));
+        flash.daiJoin().exit(address(this), mint);
 
-        payBackFunds(_amount, _fee);
+        payBack(add(_amount, _fee));
+
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        (uint256 mint) = abi.decode(_data, (uint256));
+        TestVat(address(flash.vat())).mint(address(this), rad(mint));
+
+        payBackVatDai(add(_amount, _fee));
+
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
 
-contract TestReentrancyReceiver is FlashMintReceiverBase {
+contract TestReentrancyReceiver is FlashLoanReceiverBase {
 
     TestImmediatePaybackReceiver immediatePaybackReceiver;
 
     // --- Init ---
-    constructor(address _flash) FlashMintReceiverBase(_flash) public {
+    constructor(address _flash) FlashLoanReceiverBase(_flash) public {
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(_flash);
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override {
-        flash.mint(address(immediatePaybackReceiver), _amount + _fee, _data);
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        flash.flashLoan(immediatePaybackReceiver, _token, _amount + _fee, _data);
 
-        payBackFunds(_amount, _fee);
+        payBack(add(_amount, _fee));
+
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        flash.vatDaiFlashLoan(immediatePaybackReceiver, _amount + _fee, _data);
+
+        payBackVatDai(add(_amount, _fee));
+
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
 
-contract TestDEXTradeReceiver is FlashMintReceiverBase {
+contract TestDEXTradeReceiver is FlashLoanReceiverBase {
 
     Dai dai;
     DaiJoin daiJoin;
@@ -150,7 +208,7 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
     bytes32 ilk;
 
     // --- Init ---
-    constructor(address flash_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) FlashMintReceiverBase(flash_) public {
+    constructor(address flash_, address dai_, address daiJoin_, address gold_, address gemA_, bytes32 ilk_) FlashLoanReceiverBase(flash_) public {
         dai = Dai(dai_);
         daiJoin = DaiJoin(daiJoin_);
         gold = DSToken(gold_);
@@ -158,14 +216,10 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         ilk = ilk_;
     }
 
-    function onFlashMint(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override {
+    function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         address me = address(this);
         uint256 totalDebt = _amount + _fee;
         uint256 goldAmount = totalDebt * 3;
-        TestVat _vat = TestVat(address(vat));
-
-        _vat.hope(address(daiJoin));
-        daiJoin.exit(me, _amount);
 
         // Perform a "trade"
         dai.burn(me, _amount);
@@ -174,9 +228,17 @@ contract TestDEXTradeReceiver is FlashMintReceiverBase {
         // Mint some more dai to repay the original loan
         gold.approve(address(gemA));
         gemA.join(me, goldAmount);
-        _vat.frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
+        flash.vat().frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
+        flash.vat().hope(address(flash.daiJoin()));
+        flash.daiJoin().exit(me, totalDebt);
 
-        payBackFunds(_amount, _fee);
+        payBack(add(_amount, _fee));
+
+        return RETURN_HASH;
+    }
+
+    function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        return RETURN_HASH_VAT_DAI;
     }
 
 }
@@ -199,9 +261,9 @@ contract DssFlashTest is DSTest {
 
     TestDoNothingReceiver doNothingReceiver;
     TestImmediatePaybackReceiver immediatePaybackReceiver;
-    TestMintAndPaybackReceiver mintAndPaybackReceiver;
-    TestMintAndPaybackAllReceiver mintAndPaybackAllReceiver;
-    TestMintAndPaybackDataReceiver mintAndPaybackDataReceiver;
+    TestLoanAndPaybackReceiver mintAndPaybackReceiver;
+    TestLoanAndPaybackAllReceiver mintAndPaybackAllReceiver;
+    TestLoanAndPaybackDataReceiver mintAndPaybackDataReceiver;
     TestReentrancyReceiver reentrancyReceiver;
     TestDEXTradeReceiver dexTradeReceiver;
 
@@ -234,8 +296,6 @@ contract DssFlashTest is DSTest {
 
         vow = new TestVow(address(vat), address(0), address(0));
 
-        flash = new DssFlash(address(vat), address(vow));
-
         gold = new DSToken("GEM");
         gold.mint(1000 ether);
 
@@ -250,6 +310,8 @@ contract DssFlashTest is DSTest {
         daiJoin = new DaiJoin(address(vat), address(dai));
         vat.rely(address(daiJoin));
         dai.rely(address(daiJoin));
+
+        flash = new DssFlash(address(vat), address(vow), address(daiJoin));
 
         pip = new DSValue();
         pip.poke(bytes32(uint256(5 ether))); // Spot = $2.5
@@ -269,55 +331,55 @@ contract DssFlashTest is DSTest {
         assertEq(vat.gem(ilk, me), 960 ether);
         assertEq(vat.dai(me), rad(100 ether));
 
-        // Basic auth and 1000 ether debt ceiling
-        flash.file("line", rad(1000 ether));
+        // Basic auth and 1000 dai debt ceiling
+        flash.file("line", 1000 ether);
         vat.rely(address(flash));
 
         doNothingReceiver = new TestDoNothingReceiver(address(flash));
         immediatePaybackReceiver = new TestImmediatePaybackReceiver(address(flash));
-        mintAndPaybackReceiver = new TestMintAndPaybackReceiver(address(flash));
-        mintAndPaybackAllReceiver = new TestMintAndPaybackAllReceiver(address(flash));
-        mintAndPaybackDataReceiver = new TestMintAndPaybackDataReceiver(address(flash));
+        mintAndPaybackReceiver = new TestLoanAndPaybackReceiver(address(flash));
+        mintAndPaybackAllReceiver = new TestLoanAndPaybackAllReceiver(address(flash));
+        mintAndPaybackDataReceiver = new TestLoanAndPaybackDataReceiver(address(flash));
         reentrancyReceiver = new TestReentrancyReceiver(address(flash));
         dexTradeReceiver = new TestDEXTradeReceiver(address(flash), address(dai), address(daiJoin), address(gold), address(gemA), ilk);
         dai.rely(address(dexTradeReceiver));
     }
 
     function test_mint_no_fee_payback () public {
-        flash.mint(address(immediatePaybackReceiver), 10 ether, "");
+        flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
     }
 
     // test mint() for _amount == 0
     function test_mint_zero_amount () public {
-        flash.mint(address(immediatePaybackReceiver), 0, "");
+        flash.vatDaiFlashLoan(immediatePaybackReceiver, 0, "");
     }
 
     // test mint() for _amount > line
     function testFail_mint_amount_over_line () public {
-        flash.mint(address(immediatePaybackReceiver), 1001 ether, "");
+        flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(1001 ether), "");
     }
 
     // test line == 0 means flash minting is halted
     function testFail_mint_line_zero () public {
         flash.file("line", 0);
 
-        flash.mint(address(immediatePaybackReceiver), 10 ether, "");
+        flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
     }
 
     // test unauthorized suck() reverts
     function testFail_mint_unauthorized_suck () public {
         vat.deny(address(flash));
 
-        flash.mint(address(immediatePaybackReceiver), 10 ether, "");
+        flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
     }
 
-    // test happy path onFlashMint() returns vat.dai() == add(_amount, fee)
+    // test happy path onFlashLoan() returns vat.dai() == add(_amount, fee)
     //       Make sure we test core system accounting balances before and after.
     function test_mint_with_fee () public {
         flash.file("toll", RATE_ONE_PCT);
         mintAndPaybackReceiver.setMint(10 ether);
 
-        flash.mint(address(mintAndPaybackReceiver), 100 ether, "");
+        flash.vatDaiFlashLoan(mintAndPaybackReceiver, rad(100 ether), "");
 
         assertEq(vow.Joy(), rad(1 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
@@ -332,7 +394,7 @@ contract DssFlashTest is DSTest {
 
         mintAndPaybackReceiver.setMint(10 ether);
 
-        flash.mint(address(mintAndPaybackReceiver), 100 ether, "");
+        flash.vatDaiFlashLoan(mintAndPaybackReceiver, rad(100 ether), "");
 
         assertEq(vow.Joy(), rad(1 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
@@ -340,27 +402,27 @@ contract DssFlashTest is DSTest {
         assertEq(vat.dai(address(flash)), rad(1 ether));
     }
 
-    // test onFlashMint that return vat.dai() < add(_amount, fee) fails
+    // test onFlashLoan that return vat.dai() < add(_amount, fee) fails
     function testFail_mint_insufficient_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
         mintAndPaybackAllReceiver.setMint(4 ether);
 
-        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, "");
+        flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
     }
 
-    // test onFlashMint that return vat.dai() > add(_amount, fee)
+    // test onFlashLoan that return vat.dai() > add(_amount, fee)
     function test_mint_too_much_dai () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
         mintAndPaybackAllReceiver.setMint(10 ether);
 
         // First mint overpays
-        flash.mint(address(mintAndPaybackAllReceiver), 100 ether, "");
+        flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
 
         assertEq(vow.Joy(), rad(5 ether));
         assertEq(vat.dai(address(flash)), rad(5 ether));
 
         // Second mint can just take the Dai in the flash contract without repaying
-        flash.mint(address(doNothingReceiver), 4 ether, "");
+        flash.vatDaiFlashLoan(doNothingReceiver, rad(4 ether), "");
 
         assertEq(vow.Joy(), rad(5 ether + 4 ether / 20));
         assertEq(vat.dai(address(flash)), rad(5 ether - 4 ether - 4 ether / 20));
@@ -372,7 +434,7 @@ contract DssFlashTest is DSTest {
         flash.file("toll", 5 * RATE_ONE_PCT);
         uint256 mintAmount = 8 ether;
 
-        flash.mint(address(mintAndPaybackDataReceiver), 100 ether, abi.encodePacked(mintAmount));
+        flash.vatDaiFlashLoan(mintAndPaybackDataReceiver, rad(100 ether), abi.encodePacked(mintAmount));
 
         assertEq(vow.Joy(), rad(5 ether));
         assertEq(vat.dai(address(mintAndPaybackDataReceiver)), rad(3 ether));
@@ -380,7 +442,7 @@ contract DssFlashTest is DSTest {
 
     // test reentrancy disallowed
     function testFail_mint_reentrancy () public {
-        flash.mint(address(reentrancyReceiver), 100 ether, "");
+        flash.vatDaiFlashLoan(reentrancyReceiver, rad(100 ether), "");
     }
 
     // test trading flash minted dai for gold and minting more dai
@@ -388,7 +450,7 @@ contract DssFlashTest is DSTest {
         // Set the owner temporarily to allow the receiver to mint
         gold.setOwner(address(dexTradeReceiver));
 
-        flash.mint(address(dexTradeReceiver), 100 ether, "");
+        flash.flashLoan(dexTradeReceiver, address(dai), 100 ether, "");
     }
 
 }
