@@ -29,11 +29,13 @@ abstract contract FlashLoanReceiverBase is IVatDaiFlashLoanReceiver, IERC3156Fla
     }
 
     // --- Helper Functions ---
-    function payBack(uint256 amount) internal {
+    function approvePayback(uint256 amount) internal {
+        // Lender takes back the dai as per ERC 3156 spec
         flash.dai().approve(address(flash), amount);
     }
-    function payBackVatDai(uint256 amount) internal {
-        flash.vat().move(address(this), address(flash), amount);
+    function approvePaybackVatDai() internal {
+        // Approve the lender to take back the dai
+        flash.vat().hope(address(flash));
     }
 
 }

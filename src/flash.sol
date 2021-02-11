@@ -141,6 +141,7 @@ contract DssFlash is IERC3156FlashLender {
         require(amount <= mul(line, RAY), "DssFlash/ceiling-exceeded");
 
         uint256 fee = mul(amount, toll) / WAD;
+        uint256 total = add(amount, fee);
 
         vat.suck(address(this), address(receiver), amount);
 
@@ -151,7 +152,8 @@ contract DssFlash is IERC3156FlashLender {
             "DssFlash/callback-failed"
         );
 
+        vat.move(address(receiver), address(this), amount);
+        vat.move(address(receiver), vow, fee);
         vat.heal(amount);
-        vat.move(address(this), vow, fee);
     }
 }
