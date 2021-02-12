@@ -89,7 +89,7 @@ contract DssFlash is IERC3156FlashLender {
     function maxFlashLoan(
         address token
     ) external override view returns (uint256) {
-        if (token == address(dai)) {
+        if (token == address(dai) && locked == 0) {
             return line;
         } else {
             return 0;
