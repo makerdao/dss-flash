@@ -35,6 +35,9 @@ contract DssFlash is IERC3156FlashLender {
     uint256 public                      toll;       // Fee           [wad]
     uint256 private                     locked;     // Reentrancy guard
 
+    bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan");
+
     // --- Events ---
     event Rely(address indexed usr);
     event Deny(address indexed usr);
@@ -122,7 +125,7 @@ contract DssFlash is IERC3156FlashLender {
         emit FlashLoan(address(receiver), token, amount, fee);
 
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == keccak256("ERC3156FlashBorrower.onFlashLoan"),
+            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == CALLBACK_SUCCESS,
             "DssFlash/callback-failed"
         );
         
@@ -130,6 +133,8 @@ contract DssFlash is IERC3156FlashLender {
         daiJoin.join(address(this), total);
         vat.heal(rad);
         vat.move(address(this), vow, mul(fee, RAY));
+
+        return true;
     }
 
     // --- Vat Dai Flash Loan ---
@@ -137,23 +142,24 @@ contract DssFlash is IERC3156FlashLender {
         IVatDaiFlashLoanReceiver receiver,      // address of conformant IVatDaiFlashLoanReceiver
         uint256 amount,                         // amount to flash loan [rad]
         bytes calldata data                     // arbitrary data to pass to the receiver
-    ) external lock {
+    ) external lock returns (bool) {
         require(amount <= mul(line, RAY), "DssFlash/ceiling-exceeded");
 
         uint256 fee = mul(amount, toll) / WAD;
-        uint256 total = add(amount, fee);
 
         vat.suck(address(this), address(receiver), amount);
 
         emit VatDaiFlashLoan(address(receiver), amount, fee);
 
         require(
-            receiver.onVatDaiFlashLoan(msg.sender, amount, fee, data) == keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan"),
+            receiver.onVatDaiFlashLoan(msg.sender, amount, fee, data) == CALLBACK_SUCCESS_VAT_DAI,
             "DssFlash/callback-failed"
         );
 
         vat.move(address(receiver), address(this), amount);
         vat.move(address(receiver), vow, fee);
         vat.heal(amount);
+
+        return true;
     }
 }

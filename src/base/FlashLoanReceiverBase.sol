@@ -8,8 +8,8 @@ abstract contract FlashLoanReceiverBase is IVatDaiFlashLoanReceiver, IERC3156Fla
 
     DssFlash public flash;
 
-    bytes32 public constant RETURN_HASH = keccak256("ERC3156FlashBorrower.onFlashLoan");
-    bytes32 public constant RETURN_HASH_VAT_DAI = keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan");
 
     // --- Init ---
     constructor(address _flash) public {

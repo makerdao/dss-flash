@@ -48,12 +48,12 @@ contract TestDoNothingReceiver is FlashLoanReceiverBase {
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         // Don't do anything
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         // Don't do anything
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
@@ -68,14 +68,14 @@ contract TestImmediatePaybackReceiver is FlashLoanReceiverBase {
         // Just pay back the original amount
         approvePayback(add(_amount, _fee));
 
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         // Just pay back the original amount
         approvePaybackVatDai();
 
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
@@ -99,7 +99,7 @@ contract TestLoanAndPaybackReceiver is FlashLoanReceiverBase {
 
         approvePayback(add(_amount, _fee));
 
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
@@ -107,7 +107,7 @@ contract TestLoanAndPaybackReceiver is FlashLoanReceiverBase {
 
         approvePaybackVatDai();
 
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
@@ -131,7 +131,7 @@ contract TestLoanAndPaybackAllReceiver is FlashLoanReceiverBase {
 
         approvePayback(add(_amount, mint));
 
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
@@ -139,7 +139,7 @@ contract TestLoanAndPaybackAllReceiver is FlashLoanReceiverBase {
 
         approvePaybackVatDai();
 
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
@@ -158,7 +158,7 @@ contract TestLoanAndPaybackDataReceiver is FlashLoanReceiverBase {
 
         approvePayback(add(_amount, _fee));
 
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
@@ -167,7 +167,7 @@ contract TestLoanAndPaybackDataReceiver is FlashLoanReceiverBase {
 
         approvePaybackVatDai();
 
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
@@ -186,7 +186,7 @@ contract TestReentrancyReceiver is FlashLoanReceiverBase {
 
         approvePayback(add(_amount, _fee));
 
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
@@ -194,7 +194,7 @@ contract TestReentrancyReceiver is FlashLoanReceiverBase {
 
         approvePaybackVatDai();
 
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
@@ -234,11 +234,11 @@ contract TestDEXTradeReceiver is FlashLoanReceiverBase {
 
         approvePayback(add(_amount, _fee));
 
-        return RETURN_HASH;
+        return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
-        return RETURN_HASH_VAT_DAI;
+        return CALLBACK_SUCCESS_VAT_DAI;
     }
 
 }
