@@ -1,4 +1,20 @@
-pragma solidity ^0.6.11;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2021 Dai Foundation
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+pragma solidity ^0.6.12;
 
 import "./interface/IERC3156FlashLender.sol";
 import "./interface/IERC3156FlashBorrower.sol";
@@ -6,13 +22,6 @@ import "./interface/IVatDaiFlashLoanReceiver.sol";
 import "dss-interfaces/dss/VatAbstract.sol";
 import "dss-interfaces/dss/DaiJoinAbstract.sol";
 import "dss-interfaces/dss/DaiAbstract.sol";
-
-interface VatLike {
-    function dai(address) external view returns (uint256);
-    function move(address src, address dst, uint256 rad) external;
-    function heal(uint256 rad) external;
-    function suck(address,address,uint256) external;
-}
 
 contract DssFlash is IERC3156FlashLender {
 
@@ -27,9 +36,9 @@ contract DssFlash is IERC3156FlashLender {
 
     // --- Data ---
     VatAbstract public immutable        vat;
-    address public immutable            vow;
     DaiJoinAbstract public immutable    daiJoin;
     DaiAbstract public immutable        dai;
+    address public immutable            vow;        // vow intentionally set immutable to save gas
     
     uint256 public                      line;       // Debt Ceiling  [wad]
     uint256 public                      toll;       // Fee           [wad]
@@ -42,7 +51,6 @@ contract DssFlash is IERC3156FlashLender {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, uint256 data);
-    event File(bytes32 indexed what, address data);
     event FlashLoan(address indexed receiver, address token, uint256 amount, uint256 fee);
     event VatDaiFlashLoan(address indexed receiver, uint256 amount, uint256 fee);
 
@@ -54,16 +62,16 @@ contract DssFlash is IERC3156FlashLender {
     }
 
     // --- Init ---
-    constructor(address vat_, address vow_, address daiJoin_) public {
+    constructor(address daiJoin_, address vow_) public {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
-        vat = VatAbstract(vat_);
+        vat = VatAbstract(DaiJoinAbstract(daiJoin_).vat());
         vow = vow_;
         daiJoin = DaiJoinAbstract(daiJoin_);
         dai = DaiAbstract(DaiJoinAbstract(daiJoin_).dai());
 
-        VatAbstract(vat_).hope(daiJoin_);
+        VatAbstract(DaiJoinAbstract(daiJoin_).vat()).hope(daiJoin_);
         DaiAbstract(DaiJoinAbstract(daiJoin_).dai()).approve(daiJoin_, uint256(-1));
     }
 
@@ -156,9 +164,8 @@ contract DssFlash is IERC3156FlashLender {
             "DssFlash/callback-failed"
         );
 
-        vat.move(address(receiver), address(this), amount);
-        vat.move(address(receiver), vow, fee);
         vat.heal(amount);
+        vat.move(address(this), vow, fee);
 
         return true;
     }
