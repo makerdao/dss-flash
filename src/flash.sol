@@ -38,7 +38,7 @@ contract DssFlash is IERC3156FlashLender {
     VatAbstract public immutable        vat;
     DaiJoinAbstract public immutable    daiJoin;
     DaiAbstract public immutable        dai;
-    address public                      vow;
+    address public immutable            vow;        // vow intentionally set immutable to save gas
     
     uint256 public                      line;       // Debt Ceiling  [wad]
     uint256 public                      toll;       // Fee           [wad]
@@ -51,7 +51,6 @@ contract DssFlash is IERC3156FlashLender {
     event Rely(address indexed usr);
     event Deny(address indexed usr);
     event File(bytes32 indexed what, uint256 data);
-    event File(bytes32 indexed what, address data);
     event FlashLoan(address indexed receiver, address token, uint256 amount, uint256 fee);
     event VatDaiFlashLoan(address indexed receiver, uint256 amount, uint256 fee);
 
@@ -93,11 +92,6 @@ contract DssFlash is IERC3156FlashLender {
             // Add an upper limit of 10^27 DAI to avoid breaking technical assumptions of DAI << 2^256 - 1
             require((line = data) <= RAD, "DssFlash/ceiling-too-high");
         } else if (what == "toll") toll = data;
-        else revert("DssFlash/file-unrecognized-param");
-        emit File(what, data);
-    }
-    function file(bytes32 what, address data) external auth {
-        if (what == "vow") vow = data;
         else revert("DssFlash/file-unrecognized-param");
         emit File(what, data);
     }
