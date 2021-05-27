@@ -3,22 +3,30 @@ pragma solidity ^0.6.11;
 import "./interface/IERC3156FlashLender.sol";
 import "./interface/IERC3156FlashBorrower.sol";
 import "./interface/IVatDaiFlashLoanReceiver.sol";
-import "dss-interfaces/dss/VatAbstract.sol";
-import "dss-interfaces/dss/DaiJoinAbstract.sol";
-import "dss-interfaces/dss/DaiAbstract.sol";
+
+interface DaiLike {
+    function transferFrom(address, address, uint256) external returns (bool);
+    function approve(address, uint256) external returns (bool);
+}
+
+interface DaiJoinLike {
+    function dai() external view returns (address);
+    function join(address, uint256) external;
+    function exit(address, uint256) external;
+}
 
 interface VatLike {
     function dai(address) external view returns (uint256);
-    function move(address src, address dst, uint256 rad) external;
-    function heal(uint256 rad) external;
+    function move(address, address, uint256) external;
+    function heal(uint256) external;
     function suck(address,address,uint256) external;
 }
 
 contract DssFlash is IERC3156FlashLender {
 
     // --- Auth ---
-    function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
-    function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
+    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
+    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
     mapping (address => uint256) public wards;
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
@@ -26,10 +34,10 @@ contract DssFlash is IERC3156FlashLender {
     }
 
     // --- Data ---
-    VatAbstract public immutable        vat;
+    VatLike public immutable            vat;
     address public immutable            vow;
-    DaiJoinAbstract public immutable    daiJoin;
-    DaiAbstract public immutable        dai;
+    DaiJoinLike public immutable        daiJoin;
+    DaiLike public immutable            dai;
     
     uint256 public                      line;       // Debt Ceiling  [wad]
     uint256 public                      toll;       // Fee           [wad]
@@ -58,13 +66,13 @@ contract DssFlash is IERC3156FlashLender {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
-        vat = VatAbstract(vat_);
+        vat = VatLike(vat_);
         vow = vow_;
-        daiJoin = DaiJoinAbstract(daiJoin_);
-        dai = DaiAbstract(DaiJoinAbstract(daiJoin_).dai());
+        daiJoin = DaiJoinLike(daiJoin_);
+        DaiLike dai_ = dai = DaiLike(DaiJoinLike(daiJoin_).dai());
 
-        VatAbstract(vat_).hope(daiJoin_);
-        DaiAbstract(DaiJoinAbstract(daiJoin_).dai()).approve(daiJoin_, uint256(-1));
+        VatLike(vat_).hope(daiJoin_);
+        DaiLike(dai_).approve(daiJoin_, uint256(-1));
     }
 
     // --- Math ---
