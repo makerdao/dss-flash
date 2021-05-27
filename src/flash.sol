@@ -18,7 +18,8 @@ pragma solidity ^0.6.12;
 
 import "./interface/IERC3156FlashLender.sol";
 import "./interface/IERC3156FlashBorrower.sol";
-import "./interface/IVatDaiFlashLoanReceiver.sol";
+import "./interface/IVatDaiFlashBorrower.sol";
+import "./interface/IVatDaiFlashLender.sol";
 
 interface DaiLike {
     function transferFrom(address, address, uint256) external returns (bool);
@@ -40,7 +41,7 @@ interface VatLike {
     function suck(address,address,uint256) external;
 }
 
-contract DssFlash is IERC3156FlashLender {
+contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
 
     // --- Auth ---
     function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
@@ -62,7 +63,7 @@ contract DssFlash is IERC3156FlashLender {
     uint256 private                     locked;     // Reentrancy guard
 
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -164,10 +165,10 @@ contract DssFlash is IERC3156FlashLender {
 
     // --- Vat Dai Flash Loan ---
     function vatDaiFlashLoan(
-        IVatDaiFlashLoanReceiver receiver,      // address of conformant IVatDaiFlashLoanReceiver
+        IVatDaiFlashBorrower receiver,          // address of conformant IVatDaiFlashBorrower
         uint256 amount,                         // amount to flash loan [rad]
         bytes calldata data                     // arbitrary data to pass to the receiver
-    ) external lock returns (bool) {
+    ) external override lock returns (bool) {
         require(amount <= mul(line, RAY), "DssFlash/ceiling-exceeded");
 
         uint256 fee = mul(amount, toll) / WAD;

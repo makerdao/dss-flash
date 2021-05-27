@@ -589,7 +589,7 @@ contract DssFlashTest is DSTest {
     }
 
     function testFail_no_callbacks1 () public {
-        flash.vatDaiFlashLoan(IVatDaiFlashLoanReceiver(address(noCallbacks)), rad(100 ether), "");
+        flash.vatDaiFlashLoan(IVatDaiFlashBorrower(address(noCallbacks)), rad(100 ether), "");
     }
     function testFail_no_callbacks2 () public {
         flash.flashLoan(IERC3156FlashBorrower(address(noCallbacks)), address(dai), 100 ether, "");

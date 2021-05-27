@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity ^0.6.12;
+pragma solidity >=0.6.12;
 
 import "../flash.sol";
-import "../interface/IVatDaiFlashLoanReceiver.sol";
+import "../interface/IVatDaiFlashBorrower.sol";
 import "../interface/IERC3156FlashBorrower.sol";
 
-abstract contract FlashLoanReceiverBase is IVatDaiFlashLoanReceiver, IERC3156FlashBorrower {
+abstract contract FlashLoanReceiverBase is IVatDaiFlashBorrower, IERC3156FlashBorrower {
 
     DssFlash public flash;
 
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
 
     // --- Init ---
     constructor(address _flash) public {
