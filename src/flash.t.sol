@@ -1,4 +1,20 @@
-pragma solidity ^0.6.11;
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2021 Dai Foundation
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+pragma solidity ^0.6.12;
 
 import "ds-test/test.sol";
 import "ds-value/value.sol";
@@ -73,7 +89,7 @@ contract TestImmediatePaybackReceiver is FlashLoanReceiverBase {
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         // Just pay back the original amount
-        approvePaybackVatDai();
+        payBackVatDai(add(_amount, _fee));
 
         return CALLBACK_SUCCESS_VAT_DAI;
     }
@@ -105,7 +121,7 @@ contract TestLoanAndPaybackReceiver is FlashLoanReceiverBase {
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
 
-        approvePaybackVatDai();
+        payBackVatDai(add(_amount, _fee));
 
         return CALLBACK_SUCCESS_VAT_DAI;
     }
@@ -137,7 +153,7 @@ contract TestLoanAndPaybackAllReceiver is FlashLoanReceiverBase {
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
 
-        approvePaybackVatDai();
+        payBackVatDai(add(_amount, rad(mint)));
 
         return CALLBACK_SUCCESS_VAT_DAI;
     }
@@ -165,7 +181,7 @@ contract TestLoanAndPaybackDataReceiver is FlashLoanReceiverBase {
         (uint256 mint) = abi.decode(_data, (uint256));
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
 
-        approvePaybackVatDai();
+        payBackVatDai(add(_amount, _fee));
 
         return CALLBACK_SUCCESS_VAT_DAI;
     }
@@ -192,7 +208,7 @@ contract TestReentrancyReceiver is FlashLoanReceiverBase {
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
         flash.vatDaiFlashLoan(immediatePaybackReceiver, _amount + _fee, _data);
 
-        approvePaybackVatDai();
+        payBackVatDai(add(_amount, _fee));
 
         return CALLBACK_SUCCESS_VAT_DAI;
     }
@@ -258,7 +274,7 @@ contract TestBadReturn is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
-        approvePaybackVatDai();
+        payBackVatDai(add(_amount, _fee));
 
         return BAD_HASH;
     }
@@ -339,7 +355,7 @@ contract DssFlashTest is DSTest {
         vat.rely(address(daiJoin));
         dai.rely(address(daiJoin));
 
-        flash = new DssFlash(address(vat), address(vow), address(daiJoin));
+        flash = new DssFlash(address(daiJoin), address(vow));
 
         pip = new DSValue();
         pip.poke(bytes32(uint256(5 ether))); // Spot = $2.5
@@ -497,7 +513,7 @@ contract DssFlashTest is DSTest {
         assertEq(vow.Joy(), rad(5 ether));
         assertEq(dai.balanceOf(address(flash)), 0 ether);
     }
-    // Mirror the spec behavior on the vat dai version
+    // The vat dai version will allow overpays
     function test_mint_too_much_dai1 () public {
         flash.file("toll", 5 * RATE_ONE_PCT);
         mintAndPaybackAllReceiver.setMint(10 ether);
@@ -506,7 +522,7 @@ contract DssFlashTest is DSTest {
         flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
 
         assertEq(vow.Joy(), rad(5 ether));
-        assertEq(vat.dai(address(flash)), rad(0 ether));
+        assertEq(vat.dai(address(flash)), rad(5 ether));
     }
 
     // test that data sends properly
