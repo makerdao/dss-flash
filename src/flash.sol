@@ -27,11 +27,13 @@ interface DaiLike {
 
 interface DaiJoinLike {
     function dai() external view returns (address);
+    function vat() external view returns (address);
     function join(address, uint256) external;
     function exit(address, uint256) external;
 }
 
 interface VatLike {
+    function hope(address) external;
     function dai(address) external view returns (uint256);
     function move(address, address, uint256) external;
     function heal(uint256) external;

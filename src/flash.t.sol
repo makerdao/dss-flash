@@ -244,7 +244,7 @@ contract TestDEXTradeReceiver is FlashLoanReceiverBase {
         // Mint some more dai to repay the original loan
         gold.approve(address(gemA));
         gemA.join(me, goldAmount);
-        flash.vat().frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
+        Vat(address(flash.vat())).frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
         flash.vat().hope(address(flash.daiJoin()));
         flash.daiJoin().exit(me, totalDebt);
 
