@@ -90,7 +90,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         vow = vow_;
 
         VatLike(vat_).hope(daiJoin_);
-        DaiLike(dai_).approve(daiJoin_, uint256(-1));
+        DaiLike(dai_).approve(daiJoin_, type(uint256).max);
     }
 
     // --- Math ---
