@@ -41,6 +41,10 @@ interface VatLike {
     function suck(address,address,uint256) external;
 }
 
+interface VowLike {
+    function heal(uint256) external;
+}
+
 contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
 
     // --- Auth ---
@@ -56,7 +60,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     VatLike     public immutable vat;
     DaiJoinLike public immutable daiJoin;
     DaiLike     public immutable dai;
-    address     public immutable vow;       // vow intentionally set immutable to save gas
+    VowLike     public immutable vow;       // vow intentionally set immutable to save gas
     
     uint256              public line;       // Debt Ceiling  [wad]
     uint256              public toll;       // Fee           [wad = 100%]
@@ -87,7 +91,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         VatLike vat_ = vat = VatLike(DaiJoinLike(daiJoin_).vat());
         daiJoin = DaiJoinLike(daiJoin_);
         DaiLike dai_ = dai = DaiLike(DaiJoinLike(daiJoin_).dai());
-        vow = vow_;
+        vow = VowLike(vow_);
 
         vat_.hope(daiJoin_);
         dai_.approve(daiJoin_, type(uint256).max);
@@ -145,7 +149,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         uint256 fee = mul(amount, toll) / WAD;
         uint256 total = add(amount, fee);
 
-        vat.suck(address(this), address(this), rad);
+        vat.suck(address(vow), address(this), rad);
         daiJoin.exit(address(receiver), amount);
 
         emit FlashLoan(address(receiver), token, amount, fee);
@@ -156,9 +160,8 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         );
         
         dai.transferFrom(address(receiver), address(this), total);
-        daiJoin.join(address(this), total);
-        vat.heal(rad);
-        vat.move(address(this), vow, mul(fee, RAY));
+        daiJoin.join(address(vow), total);
+        vow.heal(rad);
 
         return true;
     }
@@ -173,7 +176,8 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
 
         uint256 fee = mul(amount, toll) / WAD;
 
-        vat.suck(address(this), address(receiver), amount);
+        uint256 vdai = vat.dai(address(vow));
+        vat.suck(address(vow), address(receiver), amount);
 
         emit VatDaiFlashLoan(address(receiver), amount, fee);
 
@@ -182,8 +186,8 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
             "DssFlash/callback-failed"
         );
 
-        vat.heal(amount);
-        vat.move(address(this), vow, fee);
+        require(vat.dai(address(vow)) >= add(add(vdai, amount), fee), "DssFlash/insufficient-payback");
+        vow.heal(amount);
 
         return true;
     }

@@ -521,8 +521,7 @@ contract DssFlashTest is DSTest {
         // First mint overpays
         flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
 
-        assertEq(vow.Joy(), rad(5 ether));
-        assertEq(vat.dai(address(flash)), rad(5 ether));
+        assertEq(vow.Joy(), rad(10 ether));
     }
 
     // test that data sends properly
