@@ -82,7 +82,7 @@ Notice that no token is required because it is assumed to be vat dai. Also, the 
 
 ### Approval Mechanism
 
-ERC3156 specifies using a token approval to approve the amount to repay to the lender. Unfortunately vat dai does not have a way to specify delegation amounts, so instead of giving the flash mint module full rights to withdraw any amount of vat dai we have instead opted to have the receiver push the balance owed at the end of the transaction.
+ERC3156 specifies using a token approval to approve the amount to repay to the lender. Unfortunately vat dai does not have a way to specify delegation amounts, so instead of giving the flash mint module full rights to withdraw any amount of vat dai we have instead opted to have the receiver push the balance owed at the end of the transaction. This outstanding balance should be paid to the vow.
 
 ### Example
 
