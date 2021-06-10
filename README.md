@@ -78,7 +78,7 @@ vs
 
 `flashLoan(IERC3156FlashBorrower receiver, address token, uint256 amount, bytes calldata data)`
 
-Notice that no token is require because it is assumed to be vat dai. Also, the `amount` is in RADs and not in WADs.
+Notice that no token is required because it is assumed to be vat dai. Also, the `amount` is in RADs and not in WADs.
 
 ### Approval Mechanism
 
