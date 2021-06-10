@@ -53,14 +53,14 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     }
 
     // --- Data ---
-    VatLike public immutable            vat;
-    DaiJoinLike public immutable        daiJoin;
-    DaiLike public immutable            dai;
-    address public immutable            vow;        // vow intentionally set immutable to save gas
+    VatLike     public immutable vat;
+    DaiJoinLike public immutable daiJoin;
+    DaiLike     public immutable dai;
+    address     public immutable vow;       // vow intentionally set immutable to save gas
     
-    uint256 public                      line;       // Debt Ceiling  [wad]
-    uint256 public                      toll;       // Fee           [wad]
-    uint256 private                     locked;     // Reentrancy guard
+    uint256              public line;       // Debt Ceiling  [wad]
+    uint256              public toll;       // Fee           [wad]
+    uint256           private locked;       // Reentrancy guard
 
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
     bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
