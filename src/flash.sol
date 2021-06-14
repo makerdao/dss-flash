@@ -142,8 +142,6 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         require(token == address(dai), "DssFlash/token-unsupported");
         require(amount <= line, "DssFlash/ceiling-exceeded");
 
-        uint256 prev = vat.dai(address(this));
-
         uint256 rad = mul(amount, RAY);
         uint256 fee = mul(amount, toll) / WAD;
         uint256 total = add(amount, fee);
@@ -161,7 +159,6 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         dai.transferFrom(address(receiver), address(this), total);
         daiJoin.join(address(this), total);
         vat.heal(rad);
-        require(vat.dai(address(this)) >= add(prev, fee), "DssFlash/ceiling-exceeded");
 
         return true;
     }
@@ -188,16 +185,16 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         );
 
         vat.heal(amount);
-        require(vat.dai(address(this)) >= add(prev, fee), "DssFlash/ceiling-exceeded");
+        require(vat.dai(address(this)) >= add(prev, fee), "DssFlash/insufficient-fee");
 
         return true;
     }
 
-    function convert() external {
+    function convert() external lock {
         daiJoin.join(address(this), dai.balanceOf(address(this)));
     }
 
-    function accrue() external {
+    function accrue() external lock {
         vat.move(address(this), vow, vat.dai(address(this)));
     }
 }
