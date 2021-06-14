@@ -96,10 +96,10 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x);
     }
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+    function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
 
@@ -129,7 +129,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     ) external override view returns (uint256) {
         require(token == address(dai), "DssFlash/token-unsupported");
 
-        return mul(amount, toll) / WAD;
+        return _mul(amount, toll) / WAD;
     }
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -140,9 +140,9 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         require(token == address(dai), "DssFlash/token-unsupported");
         require(amount <= line, "DssFlash/ceiling-exceeded");
 
-        uint256 amt = mul(amount, RAY);
-        uint256 fee = mul(amount, toll) / WAD;
-        uint256 total = add(amount, fee);
+        uint256 amt = _mul(amount, RAY);
+        uint256 fee = _mul(amount, toll) / WAD;
+        uint256 total = _add(amount, fee);
 
         vat.suck(address(this), address(this), amt);
         daiJoin.exit(address(receiver), amount);
@@ -157,7 +157,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         dai.transferFrom(address(receiver), address(this), total);
         daiJoin.join(address(this), total);
         vat.heal(amt);
-        vat.move(address(this), vow, mul(fee, RAY));
+        vat.move(address(this), vow, _mul(fee, RAY));
 
         return true;
     }
@@ -168,9 +168,9 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         uint256 amount,                         // amount to flash loan [rad]
         bytes calldata data                     // arbitrary data to pass to the receiver
     ) external override lock returns (bool) {
-        require(amount <= mul(line, RAY), "DssFlash/ceiling-exceeded");
+        require(amount <= _mul(line, RAY), "DssFlash/ceiling-exceeded");
 
-        uint256 fee = mul(amount, toll) / WAD;
+        uint256 fee = _mul(amount, toll) / WAD;
 
         vat.suck(address(this), address(receiver), amount);
 
