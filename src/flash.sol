@@ -140,11 +140,11 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         require(token == address(dai), "DssFlash/token-unsupported");
         require(amount <= line, "DssFlash/ceiling-exceeded");
 
-        uint256 rad = mul(amount, RAY);
+        uint256 amt = mul(amount, RAY);
         uint256 fee = mul(amount, toll) / WAD;
         uint256 total = add(amount, fee);
 
-        vat.suck(address(this), address(this), rad);
+        vat.suck(address(this), address(this), amt);
         daiJoin.exit(address(receiver), amount);
 
         emit FlashLoan(address(receiver), token, amount, fee);
@@ -156,7 +156,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
 
         dai.transferFrom(address(receiver), address(this), total);
         daiJoin.join(address(this), total);
-        vat.heal(rad);
+        vat.heal(amt);
         vat.move(address(this), vow, mul(fee, RAY));
 
         return true;
