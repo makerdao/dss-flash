@@ -133,7 +133,7 @@ contract FlashBorrower is IVatDaiFlashBorrower {
         }
 
         // Repay the loan amount + fee
-        // Be sure not to overpay as there are no safety gaurds for this
+        // Be sure not to overpay as there are no safety guards for this
         vat.move(address(this), address(lender), amount + fee);
 
         return keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
