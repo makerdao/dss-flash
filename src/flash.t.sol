@@ -63,11 +63,13 @@ contract TestDoNothingReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _token; _amount; _fee;
         // Don't do anything
         return CALLBACK_SUCCESS;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _amount; _fee;
         // Don't do anything
         return CALLBACK_SUCCESS_VAT_DAI;
     }
@@ -81,6 +83,7 @@ contract TestImmediatePaybackReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _token;
         // Just pay back the original amount
         approvePayback(add(_amount, _fee));
 
@@ -88,6 +91,7 @@ contract TestImmediatePaybackReceiver is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender;
         // Just pay back the original amount
         payBackVatDai(add(_amount, _fee));
 
@@ -109,6 +113,7 @@ contract TestLoanAndPaybackReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _token;
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
         flash.vat().hope(address(flash.daiJoin()));
         flash.daiJoin().exit(address(this), mint);
@@ -119,6 +124,7 @@ contract TestLoanAndPaybackReceiver is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender;
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
 
         payBackVatDai(add(_amount, _fee));
@@ -141,6 +147,7 @@ contract TestLoanAndPaybackAllReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _token; _fee;
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
         flash.vat().hope(address(flash.daiJoin()));
         flash.daiJoin().exit(address(this), mint);
@@ -151,6 +158,7 @@ contract TestLoanAndPaybackAllReceiver is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _fee;
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
 
         payBackVatDai(add(_amount, rad(mint)));
@@ -167,6 +175,7 @@ contract TestLoanAndPaybackDataReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        _sender; _token;
         (uint256 mint) = abi.decode(_data, (uint256));
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
         flash.vat().hope(address(flash.daiJoin()));
@@ -178,6 +187,7 @@ contract TestLoanAndPaybackDataReceiver is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        _sender;
         (uint256 mint) = abi.decode(_data, (uint256));
         TestVat(address(flash.vat())).mint(address(this), rad(mint));
 
@@ -198,6 +208,7 @@ contract TestReentrancyReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        _sender;
         flash.flashLoan(immediatePaybackReceiver, _token, _amount + _fee, _data);
 
         approvePayback(add(_amount, _fee));
@@ -206,6 +217,7 @@ contract TestReentrancyReceiver is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        _sender;
         flash.vatDaiFlashLoan(immediatePaybackReceiver, _amount + _fee, _data);
 
         payBackVatDai(add(_amount, _fee));
@@ -233,6 +245,7 @@ contract TestDEXTradeReceiver is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _token;
         address me = address(this);
         uint256 totalDebt = _amount + _fee;
         uint256 goldAmount = totalDebt * 3;
@@ -254,6 +267,7 @@ contract TestDEXTradeReceiver is FlashLoanReceiverBase {
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata _data) external override returns (bytes32) {
+        _sender; _amount; _fee; _data;
         return CALLBACK_SUCCESS_VAT_DAI;
     }
 
@@ -268,12 +282,14 @@ contract TestBadReturn is FlashLoanReceiverBase {
     }
 
     function onFlashLoan(address _sender, address _token, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender; _token;
         approvePayback(add(_amount, _fee));
 
         return BAD_HASH;
     }
 
     function onVatDaiFlashLoan(address _sender, uint256 _amount, uint256 _fee, bytes calldata) external override returns (bytes32) {
+        _sender;
         payBackVatDai(add(_amount, _fee));
 
         return BAD_HASH;
