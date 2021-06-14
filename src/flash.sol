@@ -14,20 +14,38 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity ^0.6.12;
+pragma solidity 0.6.12;
 
 import "./interface/IERC3156FlashLender.sol";
 import "./interface/IERC3156FlashBorrower.sol";
-import "./interface/IVatDaiFlashLoanReceiver.sol";
-import "dss-interfaces/dss/VatAbstract.sol";
-import "dss-interfaces/dss/DaiJoinAbstract.sol";
-import "dss-interfaces/dss/DaiAbstract.sol";
+import "./interface/IVatDaiFlashBorrower.sol";
+import "./interface/IVatDaiFlashLender.sol";
 
-contract DssFlash is IERC3156FlashLender {
+interface DaiLike {
+    function transferFrom(address, address, uint256) external returns (bool);
+    function approve(address, uint256) external returns (bool);
+}
+
+interface DaiJoinLike {
+    function dai() external view returns (address);
+    function vat() external view returns (address);
+    function join(address, uint256) external;
+    function exit(address, uint256) external;
+}
+
+interface VatLike {
+    function hope(address) external;
+    function dai(address) external view returns (uint256);
+    function move(address, address, uint256) external;
+    function heal(uint256) external;
+    function suck(address,address,uint256) external;
+}
+
+contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
 
     // --- Auth ---
-    function rely(address guy) external auth { wards[guy] = 1; emit Rely(guy); }
-    function deny(address guy) external auth { wards[guy] = 0; emit Deny(guy); }
+    function rely(address usr) external auth { wards[usr] = 1; emit Rely(usr); }
+    function deny(address usr) external auth { wards[usr] = 0; emit Deny(usr); }
     mapping (address => uint256) public wards;
     modifier auth {
         require(wards[msg.sender] == 1, "DssFlash/not-authorized");
@@ -35,17 +53,17 @@ contract DssFlash is IERC3156FlashLender {
     }
 
     // --- Data ---
-    VatAbstract public immutable        vat;
-    DaiJoinAbstract public immutable    daiJoin;
-    DaiAbstract public immutable        dai;
-    address public immutable            vow;        // vow intentionally set immutable to save gas
+    VatLike     public immutable vat;
+    DaiJoinLike public immutable daiJoin;
+    DaiLike     public immutable dai;
+    address     public immutable vow;       // vow intentionally set immutable to save gas
     
-    uint256 public                      line;       // Debt Ceiling  [wad]
-    uint256 public                      toll;       // Fee           [wad]
-    uint256 private                     locked;     // Reentrancy guard
+    uint256              public line;       // Debt Ceiling  [wad]
+    uint256              public toll;       // Fee           [wad = 100%]
+    uint256           private locked;       // Reentrancy guard
 
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("IVatDaiFlashLoanReceiver.onVatDaiFlashLoan");
+    bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
 
     // --- Events ---
     event Rely(address indexed usr);
@@ -66,13 +84,13 @@ contract DssFlash is IERC3156FlashLender {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
-        vat = VatAbstract(DaiJoinAbstract(daiJoin_).vat());
+        VatLike vat_ = vat = VatLike(DaiJoinLike(daiJoin_).vat());
+        daiJoin = DaiJoinLike(daiJoin_);
+        DaiLike dai_ = dai = DaiLike(DaiJoinLike(daiJoin_).dai());
         vow = vow_;
-        daiJoin = DaiJoinAbstract(daiJoin_);
-        dai = DaiAbstract(DaiJoinAbstract(daiJoin_).dai());
 
-        VatAbstract(DaiJoinAbstract(daiJoin_).vat()).hope(daiJoin_);
-        DaiAbstract(DaiJoinAbstract(daiJoin_).dai()).approve(daiJoin_, uint256(-1));
+        vat_.hope(daiJoin_);
+        dai_.approve(daiJoin_, type(uint256).max);
     }
 
     // --- Math ---
@@ -147,10 +165,10 @@ contract DssFlash is IERC3156FlashLender {
 
     // --- Vat Dai Flash Loan ---
     function vatDaiFlashLoan(
-        IVatDaiFlashLoanReceiver receiver,      // address of conformant IVatDaiFlashLoanReceiver
+        IVatDaiFlashBorrower receiver,          // address of conformant IVatDaiFlashBorrower
         uint256 amount,                         // amount to flash loan [rad]
         bytes calldata data                     // arbitrary data to pass to the receiver
-    ) external lock returns (bool) {
+    ) external override lock returns (bool) {
         require(amount <= mul(line, RAY), "DssFlash/ceiling-exceeded");
 
         uint256 fee = mul(amount, toll) / WAD;

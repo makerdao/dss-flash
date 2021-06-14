@@ -244,7 +244,7 @@ contract TestDEXTradeReceiver is FlashLoanReceiverBase {
         // Mint some more dai to repay the original loan
         gold.approve(address(gemA));
         gemA.join(me, goldAmount);
-        flash.vat().frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
+        Vat(address(flash.vat())).frob(ilk, me, me, me, int256(goldAmount), int256(totalDebt));
         flash.vat().hope(address(flash.daiJoin()));
         flash.daiJoin().exit(me, totalDebt);
 
@@ -589,7 +589,7 @@ contract DssFlashTest is DSTest {
     }
 
     function testFail_no_callbacks1 () public {
-        flash.vatDaiFlashLoan(IVatDaiFlashLoanReceiver(address(noCallbacks)), rad(100 ether), "");
+        flash.vatDaiFlashLoan(IVatDaiFlashBorrower(address(noCallbacks)), rad(100 ether), "");
     }
     function testFail_no_callbacks2 () public {
         flash.flashLoan(IERC3156FlashBorrower(address(noCallbacks)), address(dai), 100 ether, "");

@@ -14,23 +14,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-pragma solidity ^0.6.12;
+pragma solidity >=0.6.12;
 
-interface IVatDaiFlashLoanReceiver {
+import "./IVatDaiFlashBorrower.sol";
+
+interface IVatDaiFlashLender {
 
     /**
-     * @dev Receive a flash loan.
-     * @param initiator The initiator of the loan.
+     * @dev Initiate a flash loan.
+     * @param receiver The receiver of the tokens in the loan, and the receiver of the callback.
      * @param amount The amount of tokens lent. [rad]
-     * @param fee The additional amount of tokens to repay. [rad]
      * @param data Arbitrary data structure, intended to contain user-defined parameters.
-     * @return The keccak256 hash of "IVatDaiFlashLoanReceiver.onVatDaiFlashLoan"
      */
-    function onVatDaiFlashLoan(
-        address initiator,
+    function vatDaiFlashLoan(
+        IVatDaiFlashBorrower receiver,
         uint256 amount,
-        uint256 fee,
         bytes calldata data
-    ) external returns (bytes32);
-
+    ) external returns (bool);
 }
