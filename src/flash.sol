@@ -156,7 +156,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
             "DssFlash/callback-failed"
         );
         
-        dai.transferFrom(address(receiver), address(this), total);
+        dai.transferFrom(address(receiver), address(this), total); // The fee is also enforced here
         daiJoin.join(address(this), total);
         vat.heal(rad);
 
