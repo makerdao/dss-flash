@@ -172,7 +172,6 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         require(amount <= mul(line, RAY), "DssFlash/ceiling-exceeded");
 
         uint256 prev = vat.dai(address(this));
-
         uint256 fee = mul(amount, toll) / WAD;
 
         vat.suck(address(this), address(receiver), amount);
