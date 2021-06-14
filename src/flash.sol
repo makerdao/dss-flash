@@ -18,7 +18,6 @@ pragma solidity 0.6.12;
 
 import "./interface/IERC3156FlashLender.sol";
 import "./interface/IERC3156FlashBorrower.sol";
-import "./interface/IVatDaiFlashBorrower.sol";
 import "./interface/IVatDaiFlashLender.sol";
 
 interface DaiLike {
@@ -57,7 +56,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     DaiJoinLike public immutable daiJoin;
     DaiLike     public immutable dai;
     address     public immutable vow;       // vow intentionally set immutable to save gas
-    
+
     uint256              public line;       // Debt Ceiling  [wad]
     uint256              public toll;       // Fee           [wad = 100%]
     uint256           private locked;       // Reentrancy guard
@@ -154,7 +153,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == CALLBACK_SUCCESS,
             "DssFlash/callback-failed"
         );
-        
+
         dai.transferFrom(address(receiver), address(this), total);
         daiJoin.join(address(this), total);
         vat.heal(rad);
