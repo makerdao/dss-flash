@@ -37,7 +37,7 @@ interface VatLike {
     function dai(address) external view returns (uint256);
     function move(address, address, uint256) external;
     function heal(uint256) external;
-    function suck(address,address,uint256) external;
+    function suck(address, address, uint256) external;
 }
 
 contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
