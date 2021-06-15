@@ -58,9 +58,9 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     DaiLike     public immutable dai;
     address     public immutable vow;       // vow intentionally set immutable to save gas
 
-    uint256              public line;       // Debt Ceiling  [wad]
-    uint256              public toll;       // Fee           [wad = 100%]
-    uint256           private locked;       // Reentrancy guard
+    uint256     public  max;     // Maximum borrowable Dai  [wad]
+    uint256     public  toll;    // Fee                     [wad = 100%]
+    uint256     private locked;  // Reentrancy guard
 
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
     bytes32 public constant CALLBACK_SUCCESS_VAT_DAI = keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
@@ -106,9 +106,9 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
 
     // --- Administration ---
     function file(bytes32 what, uint256 data) external auth {
-        if (what == "line") {
+        if (what == "max") {
             // Add an upper limit of 10^27 DAI to avoid breaking technical assumptions of DAI << 2^256 - 1
-            require((line = data) <= RAD, "DssFlash/ceiling-too-high");
+            require((max = data) <= RAD, "DssFlash/ceiling-too-high");
         } else if (what == "toll") toll = data;
         else revert("DssFlash/file-unrecognized-param");
         emit File(what, data);
@@ -119,7 +119,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         address token
     ) external override view returns (uint256) {
         if (token == address(dai) && locked == 0) {
-            return line;
+            return max;
         } else {
             return 0;
         }
@@ -139,7 +139,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         bytes calldata data
     ) external override lock returns (bool) {
         require(token == address(dai), "DssFlash/token-unsupported");
-        require(amount <= line, "DssFlash/ceiling-exceeded");
+        require(amount <= max, "DssFlash/ceiling-exceeded");
 
         uint256 amt = _mul(amount, RAY);
         uint256 fee = _mul(amount, toll) / WAD;
@@ -168,7 +168,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         uint256 amount,                         // amount to flash loan [rad]
         bytes calldata data                     // arbitrary data to pass to the receiver
     ) external override lock returns (bool) {
-        require(amount <= _mul(line, RAY), "DssFlash/ceiling-exceeded");
+        require(amount <= _mul(max, RAY), "DssFlash/ceiling-exceeded");
 
         uint256 prev = vat.dai(address(this));
         uint256 fee = _mul(amount, toll) / WAD;
