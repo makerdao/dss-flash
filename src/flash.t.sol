@@ -446,11 +446,13 @@ contract DssFlashTest is DSTest {
         mintAndPaybackReceiver.setMint(10 ether);
 
         flash.vatDaiFlashLoan(mintAndPaybackReceiver, rad(100 ether), "");
+        flash.accrue();
 
         assertEq(vow.Joy(), rad(1 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
 
         flash.flashLoan(mintAndPaybackReceiver, address(dai), 100 ether, "");
+        flash.accrue();
 
         assertEq(vow.Joy(), rad(2 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
@@ -467,23 +469,32 @@ contract DssFlashTest is DSTest {
         mintAndPaybackReceiver.setMint(10 ether);
 
         flash.vatDaiFlashLoan(mintAndPaybackReceiver, rad(100 ether), "");
+        flash.accrue();
 
-        assertEq(vow.Joy(), rad(1 ether));
+        assertEq(vow.Joy(), rad(2 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
         // Ensure pre-existing amount remains in flash
-        assertEq(vat.dai(address(flash)), rad(1 ether));
+        assertEq(vat.dai(address(flash)), 0);
 
         // Test for erc20 dai
         dai.mint(address(flash), 1 ether);
 
         flash.flashLoan(mintAndPaybackReceiver, address(dai), 100 ether, "");
+        flash.accrue();
 
-        assertEq(vow.Joy(), rad(2 ether));
+        assertEq(vow.Joy(), rad(3 ether));
         assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
         assertEq(dai.balanceOf(address(mintAndPaybackReceiver)), 9 ether);
         // Ensure pre-existing amount remains in flash
-        assertEq(vat.dai(address(flash)), rad(1 ether));
+        assertEq(vat.dai(address(flash)), 0);
         assertEq(dai.balanceOf(address(flash)), 1 ether);
+        flash.convert();
+        assertEq(vat.dai(address(flash)), rad(1 ether));
+        assertEq(dai.balanceOf(address(flash)), 0);
+        flash.accrue();
+        assertEq(vow.Joy(), rad(4 ether));
+        assertEq(vat.dai(address(flash)), 0);
+        assertEq(dai.balanceOf(address(flash)), 0);
     }
 
     // test onFlashLoan that return vat.dai() < add(_amount, fee) fails
@@ -509,6 +520,7 @@ contract DssFlashTest is DSTest {
 
         // First mint overpays
         flash.flashLoan(mintAndPaybackAllReceiver, address(dai), 100 ether, "");
+        flash.accrue();
 
         assertEq(vow.Joy(), rad(5 ether));
         assertEq(dai.balanceOf(address(flash)), 0 ether);
@@ -520,9 +532,10 @@ contract DssFlashTest is DSTest {
 
         // First mint overpays
         flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
+        flash.accrue();
 
-        assertEq(vow.Joy(), rad(5 ether));
-        assertEq(vat.dai(address(flash)), rad(5 ether));
+        assertEq(vow.Joy(), rad(10 ether));
+        assertEq(vat.dai(address(flash)), 0);
     }
 
     // test that data sends properly
@@ -531,11 +544,13 @@ contract DssFlashTest is DSTest {
         uint256 mintAmount = 8 ether;
 
         flash.vatDaiFlashLoan(mintAndPaybackDataReceiver, rad(100 ether), abi.encodePacked(mintAmount));
+        flash.accrue();
 
         assertEq(vow.Joy(), rad(5 ether));
         assertEq(vat.dai(address(mintAndPaybackDataReceiver)), rad(3 ether));
 
         flash.flashLoan(mintAndPaybackDataReceiver, address(dai), 100 ether, abi.encodePacked(mintAmount));
+        flash.accrue();
 
         assertEq(vow.Joy(), rad(10 ether));
         assertEq(dai.balanceOf(address(mintAndPaybackDataReceiver)), 3 ether);
