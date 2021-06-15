@@ -183,7 +183,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         );
 
         vat.heal(amount);
-        require(vat.dai(address(this)) >= add(prev, fee), "DssFlash/insufficient-fee");
+        require(vat.dai(address(this)) >= _add(prev, fee), "DssFlash/insufficient-fee");
 
         return true;
     }
