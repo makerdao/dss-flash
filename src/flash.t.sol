@@ -392,7 +392,7 @@ contract DssFlashTest is DSTest {
         assertEq(vat.dai(me), rad(100 ether));
 
         // Basic auth and 1000 dai debt ceiling
-        flash.file("line", 1000 ether);
+        flash.file("max", 1000 ether);
         vat.rely(address(flash));
 
         doNothingReceiver = new TestDoNothingReceiver(address(flash));
@@ -433,12 +433,12 @@ contract DssFlashTest is DSTest {
 
     // test line == 0 means flash minting is halted
     function testFail_mint_line_zero1 () public {
-        flash.file("line", 0);
+        flash.file("max", 0);
 
         flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
     }
     function testFail_mint_line_zero2 () public {
-        flash.file("line", 0);
+        flash.file("max", 0);
 
         flash.flashLoan(immediatePaybackReceiver, address(dai), 10 ether, "");
     }
@@ -590,7 +590,7 @@ contract DssFlashTest is DSTest {
 
     // test excessive max debt ceiling
     function testFail_line_limit () public {
-        flash.file("line", 10 ** 45 + 1);
+        flash.file("max", 10 ** 45 + 1);
     }
 
     function test_max_flash_loan () public {
