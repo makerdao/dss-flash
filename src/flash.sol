@@ -21,6 +21,7 @@ import "./interface/IERC3156FlashBorrower.sol";
 import "./interface/IVatDaiFlashLender.sol";
 
 interface DaiLike {
+    function balanceOf(address) external returns (uint256);
     function transferFrom(address, address, uint256) external returns (bool);
     function approve(address, uint256) external returns (bool);
 }
@@ -154,10 +155,9 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
             "DssFlash/callback-failed"
         );
 
-        dai.transferFrom(address(receiver), address(this), total);
+        dai.transferFrom(address(receiver), address(this), total); // The fee is also enforced here
         daiJoin.join(address(this), total);
         vat.heal(amt);
-        vat.move(address(this), vow, _mul(fee, RAY));
 
         return true;
     }
@@ -170,6 +170,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     ) external override lock returns (bool) {
         require(amount <= _mul(line, RAY), "DssFlash/ceiling-exceeded");
 
+        uint256 prev = vat.dai(address(this));
         uint256 fee = _mul(amount, toll) / WAD;
 
         vat.suck(address(this), address(receiver), amount);
@@ -182,8 +183,16 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         );
 
         vat.heal(amount);
-        vat.move(address(this), vow, fee);
+        require(vat.dai(address(this)) >= add(prev, fee), "DssFlash/insufficient-fee");
 
         return true;
+    }
+
+    function convert() external lock {
+        daiJoin.join(address(this), dai.balanceOf(address(this)));
+    }
+
+    function accrue() external lock {
+        vat.move(address(this), vow, vat.dai(address(this)));
     }
 }
