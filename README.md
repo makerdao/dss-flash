@@ -147,4 +147,15 @@ contract FlashBorrower is IVatDaiFlashBorrower {
         lender.flashLoan(this, amount, data);
     }
 }
+
 ```
+
+## Deployment
+
+To deploy this contract run the following commands:
+
+`make deploy-mainnet` for mainnet deployment
+
+`make deploy-kovan` for kovan deployment
+
+Deployed Kovan address: `0x5aA1323f61D679E52a90120DFDA2ed1A76E4475A`
