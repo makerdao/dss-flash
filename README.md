@@ -136,7 +136,7 @@ contract FlashBorrower is IVatDaiFlashBorrower {
 
         // Repay the loan amount + fee
         // Be sure not to overpay as there are no safety guards for this
-        vat.move(address(this), address(lender), amount + fee);
+        vat.move(address(this), lender, amount + fee);
 
         return keccak256("VatDaiFlashBorrower.onVatDaiFlashLoan");
     }
@@ -146,7 +146,7 @@ contract FlashBorrower is IVatDaiFlashBorrower {
         uint256 amount
     ) public {
         bytes memory data = abi.encode(Action.NORMAL);
-        lender.flashLoan(this, amount, data);
+        lender.vatDaiFlashLoan(this, amount, data);
     }
 }
 
