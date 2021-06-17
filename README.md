@@ -105,7 +105,7 @@ contract FlashBorrower is IVatDaiFlashBorrower {
     constructor (
         VatAbstract vat_,
         IVatDaiFlashLender lender_
-    ) {
+    ) public {
         vat = vat_;
         lender = lender_;
     }
