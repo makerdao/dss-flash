@@ -20,7 +20,7 @@ contract FlashBorrower is IERC3156FlashBorrower {
 
     constructor (
         IERC3156FlashLender lender_
-    ) {
+    ) public {
         lender = lender_;
     }
 
