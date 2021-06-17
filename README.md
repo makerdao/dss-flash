@@ -42,7 +42,9 @@ contract FlashBorrower is IERC3156FlashBorrower {
         );
         (Action action) = abi.decode(data, (Action));
         if (action == Action.NORMAL) {
-            // do one thing
+            require(IERC20(token).balanceOf(address(this)) >= amount);
+            // make a profitable trade here
+            IERC20(token).transfer(initiator, amount + fee);
         } else if (action == Action.OTHER) {
             // do another
         }
