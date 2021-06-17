@@ -31,7 +31,7 @@ contract FlashBorrower is IERC3156FlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external override returns(bool) {
+    ) external override returns (bytes32) {
         require(
             msg.sender == address(lender),
             "FlashBorrower: Untrusted lender"
@@ -116,7 +116,7 @@ contract FlashBorrower is IVatDaiFlashBorrower {
         uint256 amount,
         uint256 fee,
         bytes calldata data
-    ) external override returns(bool) {
+    ) external override returns (bytes32) {
         require(
             msg.sender == address(lender),
             "FlashBorrower: Untrusted lender"
