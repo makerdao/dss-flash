@@ -160,5 +160,5 @@ To deploy this contract run the following commands:
 
 `make deploy-kovan` for kovan deployment
 
-Deployed Kovan address: [0x5aA1323f61D679E52a90120DFDA2ed1A76E4475A](https://kovan.etherscan.io/address/0x5aA1323f61D679E52a90120DFDA2ed1A76E4475A#code)
-Deployed Mainnet address: [0x1EB4CF3A948E7D72A198fe073cCb8C7a948cD853](https://etherscan.io/address/0x1eb4cf3a948e7d72a198fe073ccb8c7a948cd853#code)
+Deployed Kovan address: [0x5aA1323f61D679E52a90120DFDA2ed1A76E4475A](https://kovan.etherscan.io/address/0x5aA1323f61D679E52a90120DFDA2ed1A76E4475A#code)  
+Deployed Mainnet address: [0x1EB4CF3A948E7D72A198fe073cCb8C7a948cD853](https://etherscan.io/address/0x1eb4cf3a948e7d72a198fe073ccb8c7a948cd853#code)  
