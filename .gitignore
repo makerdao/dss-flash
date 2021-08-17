@@ -1,1 +1,5 @@
 /out
+# certora
+.*certora*
+.last_confs/
+*.zip
