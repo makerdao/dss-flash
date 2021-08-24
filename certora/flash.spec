@@ -1,6 +1,10 @@
 // flash.spec
 
-// certoraRun src/flash.sol:DssFlash --verify DssFlash:certora/flash.spec --rule_sanity --solc_args "['--optimize','--optimize-runs','200']"
+// certoraRun src/flash.sol:DssFlash certora/Vat.sol certora/DaiJoin.sol certora/Dai.sol --link DssFlash:vat=Vat DssFlash:dai=Dai DssFlash:daiJoin=DaiJoin DaiJoin:vat=Vat DaiJoin:dai=Dai --verify DssFlash:certora/flash.spec --rule_sanity --solc_args "['--optimize','--optimize-runs','200']"
+
+using Dai as daiToken
+using DaiJoin as daiJoin
+using Vat as vat
 
 methods {
     wards(address) returns (uint256) envfree
@@ -12,6 +16,17 @@ methods {
     CALLBACK_SUCCESS_VAT_DAI() returns (bytes32) envfree
     maxFlashLoan(address) returns (uint256) envfree
     flashFee(address, uint256) returns (uint256) envfree
+    daiJoin.live() returns (uint256) envfree
+    daiJoin.vat() returns (address) envfree
+    daiJoin.dai() returns (address) envfree
+    vat.wards(address) returns (uint256) envfree
+    vat.can(address, address) returns (uint256) envfree
+    vat.dai(address) returns (uint256) envfree
+    vat.sin(address) returns (uint256) envfree
+    vat.vice() returns (uint256) envfree
+    vat.debt() returns (uint256) envfree
+
+    onFlashLoan(address, address, uint256, uint256, bytes) => HAVOC_ECF
 }
 
 ghost lockedGhost() returns uint256;
@@ -133,4 +148,13 @@ rule flashFee_revert(address token, uint256 amount) {
     assert(revert1 => lastReverted, "Non-dai token did not revert");
 
     assert(lastReverted => revert1, "Revert rules are not covering all the cases");
+}
+
+// Verify flash loan works as expected
+rule flashLoan(address receiver, address token, uint256 amount, bytes data) {
+    env e;
+
+    bool result = flashLoan(e, receiver, token, amount, data);
+
+    assert(result, "result should be true");
 }
