@@ -26,7 +26,7 @@ methods {
     vat.vice() returns (uint256) envfree
     vat.debt() returns (uint256) envfree
 
-    onFlashLoan(address, address, uint256, uint256, bytes) => HAVOC_ECF
+    onFlashLoan(address, address, uint256, bytes) => HAVOC_ECF
 }
 
 ghost lockedGhost() returns uint256;
