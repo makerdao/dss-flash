@@ -151,10 +151,14 @@ rule flashFee_revert(address token, uint256 amount) {
 }
 
 // Verify flash loan works as expected
-rule flashLoan(address receiver, address token, uint256 amount, bytes data) {
+rule flashLoan() {
     env e;
+    calldataarg args;
 
-    bool result = flashLoan(e, receiver, token, amount, data);
+    uint256 sin = vat.sin(currentContract);
 
+    bool result = flashLoan(e, args);
+
+    assert(vat.sin(currentContract) == sin, "sin should be unchanged");
     assert(result, "result should be true");
 }
