@@ -1,4 +1,5 @@
 # dss-flash
+![Build Status](https://github.com/makerdao/dss-flash/actions/workflows/.github/workflows/tests.yaml/badge.svg?branch=master)
 
 Flash Mint Module for the Maker protocol - an implementation of [MIP25](https://forum.makerdao.com/t/mip25-flash-mint-module/4400). This module conforms to the [ERC3156 spec](https://eips.ethereum.org/EIPS/eip-3156) so please read this over to get a firm idea of the considerations/risks.
 
