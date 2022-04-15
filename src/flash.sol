@@ -56,10 +56,8 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     VatLike     public immutable vat;
     DaiJoinLike public immutable daiJoin;
     DaiLike     public immutable dai;
-    address     public immutable vow;       // vow intentionally set immutable to save gas
 
     uint256     public  max;     // Maximum borrowable Dai  [wad]
-    uint256     public  toll;    // Fee                     [wad = 100%]
     uint256     private locked;  // Reentrancy guard
 
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -80,26 +78,21 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     }
 
     // --- Init ---
-    constructor(address daiJoin_, address vow_) public {
+    constructor(address daiJoin_) public {
         wards[msg.sender] = 1;
         emit Rely(msg.sender);
 
         VatLike vat_ = vat = VatLike(DaiJoinLike(daiJoin_).vat());
         daiJoin = DaiJoinLike(daiJoin_);
         DaiLike dai_ = dai = DaiLike(DaiJoinLike(daiJoin_).dai());
-        vow = vow_;
 
         vat_.hope(daiJoin_);
         dai_.approve(daiJoin_, type(uint256).max);
     }
 
     // --- Math ---
-    uint256 constant WAD = 10 ** 18;
     uint256 constant RAY = 10 ** 27;
     uint256 constant RAD = 10 ** 45;
-    function _add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x);
-    }
     function _mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);
     }
@@ -109,7 +102,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         if (what == "max") {
             // Add an upper limit of 10^27 DAI to avoid breaking technical assumptions of DAI << 2^256 - 1
             require((max = data) <= RAD, "DssFlash/ceiling-too-high");
-        } else if (what == "toll") toll = data;
+        }
         else revert("DssFlash/file-unrecognized-param");
         emit File(what, data);
     }
@@ -130,7 +123,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     ) external override view returns (uint256) {
         require(token == address(dai), "DssFlash/token-unsupported");
 
-        return _mul(amount, toll) / WAD;
+        return 0;
     }
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -142,21 +135,19 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         require(amount <= max, "DssFlash/ceiling-exceeded");
 
         uint256 amt = _mul(amount, RAY);
-        uint256 fee = _mul(amount, toll) / WAD;
-        uint256 total = _add(amount, fee);
 
         vat.suck(address(this), address(this), amt);
         daiJoin.exit(address(receiver), amount);
 
-        emit FlashLoan(address(receiver), token, amount, fee);
+        emit FlashLoan(address(receiver), token, amount, 0);
 
         require(
-            receiver.onFlashLoan(msg.sender, token, amount, fee, data) == CALLBACK_SUCCESS,
+            receiver.onFlashLoan(msg.sender, token, amount, 0, data) == CALLBACK_SUCCESS,
             "DssFlash/callback-failed"
         );
 
-        dai.transferFrom(address(receiver), address(this), total); // The fee is also enforced here
-        daiJoin.join(address(this), total);
+        dai.transferFrom(address(receiver), address(this), amount);
+        daiJoin.join(address(this), amount);
         vat.heal(amt);
 
         return true;
@@ -170,29 +161,17 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     ) external override lock returns (bool) {
         require(amount <= _mul(max, RAY), "DssFlash/ceiling-exceeded");
 
-        uint256 prev = vat.dai(address(this));
-        uint256 fee = _mul(amount, toll) / WAD;
-
         vat.suck(address(this), address(receiver), amount);
 
-        emit VatDaiFlashLoan(address(receiver), amount, fee);
+        emit VatDaiFlashLoan(address(receiver), amount, 0);
 
         require(
-            receiver.onVatDaiFlashLoan(msg.sender, amount, fee, data) == CALLBACK_SUCCESS_VAT_DAI,
+            receiver.onVatDaiFlashLoan(msg.sender, amount, 0, data) == CALLBACK_SUCCESS_VAT_DAI,
             "DssFlash/callback-failed"
         );
 
         vat.heal(amount);
-        require(vat.dai(address(this)) >= _add(prev, fee), "DssFlash/insufficient-fee");
 
         return true;
-    }
-
-    function convert() external lock {
-        daiJoin.join(address(this), dai.balanceOf(address(this)));
-    }
-
-    function accrue() external lock {
-        vat.move(address(this), vow, vat.dai(address(this)));
     }
 }

@@ -333,8 +333,6 @@ contract DssFlashTest is DSTest {
 
     bytes32 constant ilk = "gold";
 
-    uint256 constant RATE_ONE_PCT = 10 ** 16;
-
     function ray(uint256 wad) internal pure returns (uint256) {
         return wad * 10 ** 9;
     }
@@ -371,7 +369,7 @@ contract DssFlashTest is DSTest {
         vat.rely(address(daiJoin));
         dai.rely(address(daiJoin));
 
-        flash = new DssFlash(address(daiJoin), address(vow));
+        flash = new DssFlash(address(daiJoin));
 
         pip = new DSValue();
         pip.poke(bytes32(uint256(5 ether))); // Spot = $2.5
@@ -407,7 +405,7 @@ contract DssFlashTest is DSTest {
         dai.rely(address(dexTradeReceiver));
     }
 
-    function test_mint_no_fee_payback () public {
+    function test_mint_payback () public {
         flash.vatDaiFlashLoan(immediatePaybackReceiver, rad(10 ether), "");
         flash.flashLoan(immediatePaybackReceiver, address(dai), 10 ether, "");
 
@@ -455,123 +453,6 @@ contract DssFlashTest is DSTest {
         flash.flashLoan(immediatePaybackReceiver, address(dai), 10 ether, "");
     }
 
-    // test happy path onFlashLoan() returns vat.dai() == add(_amount, fee)
-    //       Make sure we test core system accounting balances before and after.
-    function test_mint_with_fee () public {
-        flash.file("toll", RATE_ONE_PCT);
-        mintAndPaybackReceiver.setMint(10 ether);
-
-        flash.vatDaiFlashLoan(mintAndPaybackReceiver, rad(100 ether), "");
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(1 ether));
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
-
-        flash.flashLoan(mintAndPaybackReceiver, address(dai), 100 ether, "");
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(2 ether));
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
-        assertEq(dai.balanceOf(address(mintAndPaybackReceiver)), 9 ether);
-    }
-
-    // Test mint doesn't fail when contract already has a Dai balance
-    function test_preexisting_dai_in_flash () public {
-        flash.file("toll", RATE_ONE_PCT);
-
-        // Move some collateral to the flash so it preexists the loan
-        vat.move(address(this), address(flash), rad(1 ether));
-
-        mintAndPaybackReceiver.setMint(10 ether);
-
-        flash.vatDaiFlashLoan(mintAndPaybackReceiver, rad(100 ether), "");
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(2 ether));
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
-        // Ensure pre-existing amount remains in flash
-        assertEq(vat.dai(address(flash)), 0);
-
-        // Test for erc20 dai
-        dai.mint(address(flash), 1 ether);
-
-        flash.flashLoan(mintAndPaybackReceiver, address(dai), 100 ether, "");
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(3 ether));
-        assertEq(vat.dai(address(mintAndPaybackReceiver)), rad(9 ether));
-        assertEq(dai.balanceOf(address(mintAndPaybackReceiver)), 9 ether);
-        // Ensure pre-existing amount remains in flash
-        assertEq(vat.dai(address(flash)), 0);
-        assertEq(dai.balanceOf(address(flash)), 1 ether);
-        flash.convert();
-        assertEq(vat.dai(address(flash)), rad(1 ether));
-        assertEq(dai.balanceOf(address(flash)), 0);
-        flash.accrue();
-        assertEq(vow.Joy(), rad(4 ether));
-        assertEq(vat.dai(address(flash)), 0);
-        assertEq(dai.balanceOf(address(flash)), 0);
-    }
-
-    // test onFlashLoan that return vat.dai() < add(_amount, fee) fails
-    function testFail_mint_insufficient_dai1 () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(4 ether);
-
-        flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
-    }
-    function testFail_mint_insufficient_dai2 () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(4 ether);
-
-        flash.flashLoan(mintAndPaybackAllReceiver, address(dai), 100 ether, "");
-    }
-
-    // test onFlashLoan that return vat.dai() > add(_amount, fee)
-    // ERC 3156 says to use approve instead of transfer so you never take more than you require
-    // This is an intentional difference between ERC20 Flash Mint and Vat Dai Flash Mint
-    function test_mint_too_much_dai2 () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(10 ether);
-
-        // First mint overpays
-        flash.flashLoan(mintAndPaybackAllReceiver, address(dai), 100 ether, "");
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(5 ether));
-        assertEq(dai.balanceOf(address(flash)), 0 ether);
-    }
-    // The vat dai version will allow overpays
-    function test_mint_too_much_dai1 () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
-        mintAndPaybackAllReceiver.setMint(10 ether);
-
-        // First mint overpays
-        flash.vatDaiFlashLoan(mintAndPaybackAllReceiver, rad(100 ether), "");
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(10 ether));
-        assertEq(vat.dai(address(flash)), 0);
-    }
-
-    // test that data sends properly
-    function test_mint_data () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
-        uint256 mintAmount = 8 ether;
-
-        flash.vatDaiFlashLoan(mintAndPaybackDataReceiver, rad(100 ether), abi.encodePacked(mintAmount));
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(5 ether));
-        assertEq(vat.dai(address(mintAndPaybackDataReceiver)), rad(3 ether));
-
-        flash.flashLoan(mintAndPaybackDataReceiver, address(dai), 100 ether, abi.encodePacked(mintAmount));
-        flash.accrue();
-
-        assertEq(vow.Joy(), rad(10 ether));
-        assertEq(dai.balanceOf(address(mintAndPaybackDataReceiver)), 3 ether);
-    }
-
     // test reentrancy disallowed
     function testFail_mint_reentrancy1 () public {
         flash.vatDaiFlashLoan(reentrancyReceiver, rad(100 ether), "");
@@ -599,12 +480,10 @@ contract DssFlashTest is DSTest {
     }
 
     function test_flash_fee () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
-        assertEq(flash.flashFee(address(dai), 100 ether), 5 ether);
+        assertEq(flash.flashFee(address(dai), 100 ether), 0);
     }
 
     function testFail_flash_fee () public {
-        flash.file("toll", 5 * RATE_ONE_PCT);
         flash.flashFee(address(daiJoin), 100 ether);  // Any other address should fail
     }
 
