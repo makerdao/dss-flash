@@ -36,6 +36,7 @@ interface DaiJoinLike {
 interface VatLike {
     function hope(address) external;
     function dai(address) external view returns (uint256);
+    function live() external view returns (uint256);
     function move(address, address, uint256) external;
     function heal(uint256) external;
     function suck(address, address, uint256) external;
@@ -117,14 +118,17 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
             return 0;
         }
     }
+
     function flashFee(
         address token,
         uint256 amount
     ) external override view returns (uint256) {
+        amount;
         require(token == address(dai), "DssFlash/token-unsupported");
 
         return 0;
     }
+
     function flashLoan(
         IERC3156FlashBorrower receiver,
         address token,
@@ -133,6 +137,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
     ) external override lock returns (bool) {
         require(token == address(dai), "DssFlash/token-unsupported");
         require(amount <= max, "DssFlash/ceiling-exceeded");
+        require(vat.live() == 1, "DssFlash/vat-not-live");
 
         uint256 amt = _mul(amount, RAY);
 
@@ -160,6 +165,7 @@ contract DssFlash is IERC3156FlashLender, IVatDaiFlashLender {
         bytes calldata data                     // arbitrary data to pass to the receiver
     ) external override lock returns (bool) {
         require(amount <= _mul(max, RAY), "DssFlash/ceiling-exceeded");
+        require(vat.live() == 1, "DssFlash/vat-not-live");
 
         vat.suck(address(this), address(receiver), amount);
 
