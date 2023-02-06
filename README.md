@@ -159,7 +159,7 @@ To deploy this contract run the following commands:
 
 `make deploy-mainnet` for mainnet deployment
 
-`make deploy-kovan` for kovan deployment
+`make deploy-goerli` for goerli deployment
 
 Deployed Goerli address: [0xAa5F7d5b29Fa366BB04F6E4c39ACF569d5214075](https://goerli.etherscan.io/address/0xAa5F7d5b29Fa366BB04F6E4c39ACF569d5214075#code)  
 Deployed Mainnet address: [0x60744434d6339a6B27d73d9Eda62b6F66a0a04FA](https://etherscan.io/address/0x60744434d6339a6B27d73d9Eda62b6F66a0a04FA#code)  
